@@ -4,7 +4,8 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getBaziChart, type BaziChart, type Gender, type PillarKey } from "@/lib/engines/bazi";
+import { getBaziChart } from "@/lib/engines/bazi";
+import type { ChartFacts, Gender, PillarKey } from "@/lib/schemas/chart-facts";
 
 const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
 
@@ -12,7 +13,7 @@ const inputClassName =
   "h-9 w-full rounded-md border border-input bg-background/70 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30";
 
 export function BaziForm() {
-  const [chart, setChart] = React.useState<BaziChart | null>(null);
+  const [chart, setChart] = React.useState<ChartFacts | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {

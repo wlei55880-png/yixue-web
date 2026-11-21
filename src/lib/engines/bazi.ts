@@ -1,64 +1,16 @@
 import { Solar } from "lunar-javascript";
 
-export type Gender = "male" | "female";
+import {
+  BaziRequestSchema,
+  ChartFactsSchema,
+  GAN_VALUES,
+  type BaziRequest,
+  type ChartFacts,
+  type Element,
+  type PillarKey,
+} from "@/lib/schemas/chart-facts";
 
-/** 子时换日流派：1 = 晚子时（23:00 起）算次日；2 = 晚子时算当日（lunar-javascript 默认）。 */
-export type DaySect = 1 | 2;
-
-export type PillarKey = "year" | "month" | "day" | "hour";
-
-export interface BaziInput {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  gender: Gender;
-  /** 默认 2（晚子时归当日），与 lunar-javascript 默认一致。 */
-  sect?: DaySect;
-}
-
-export interface BaziPillar {
-  key: PillarKey;
-  label: string;
-  /** 天干 */
-  gan: string;
-  /** 地支 */
-  zhi: string;
-  /** 干支，如「甲子」 */
-  ganZhi: string;
-  /** 天干十神（日柱为「日主」） */
-  shiShenGan: string;
-  /** 藏干 */
-  hideGan: string[];
-  /** 藏干对应的十神，与 hideGan 一一对应 */
-  shiShenZhi: string[];
-}
-
-export interface BaziChart {
-  input: BaziInput;
-  genderLabel: string;
-  solar: {
-    text: string;
-    year: number;
-    month: number;
-    day: number;
-    hour: number;
-    minute: number;
-  };
-  lunar: {
-    text: string;
-  };
-  dayMaster: string;
-  pillars: Record<PillarKey, BaziPillar>;
-  conventions: {
-    sect: DaySect;
-    sectLabel: string;
-    yearBoundary: string;
-    monthBoundary: string;
-    timezone: string;
-  };
-}
+const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
 
 const PILLAR_LABELS: Record<PillarKey, string> = {
   year: "年柱",
@@ -67,24 +19,84 @@ const PILLAR_LABELS: Record<PillarKey, string> = {
   hour: "时柱",
 };
 
-function assertInteger(name: string, value: number, min: number, max: number) {
-  if (!Number.isInteger(value) || value < min || value > max) {
-    throw new Error(`${name}需为 ${min}–${max} 的整数`);
-  }
+const GAN_ELEMENT: Record<string, Element> = {
+  甲: "木",
+  乙: "木",
+  丙: "火",
+  丁: "火",
+  戊: "土",
+  己: "土",
+  庚: "金",
+  辛: "金",
+  壬: "水",
+  癸: "水",
+};
+
+const ZHI_ELEMENT: Record<string, Element> = {
+  寅: "木",
+  卯: "木",
+  巳: "火",
+  午: "火",
+  辰: "土",
+  戌: "土",
+  丑: "土",
+  未: "土",
+  申: "金",
+  酉: "金",
+  亥: "水",
+  子: "水",
+};
+
+type ElementCount = Record<Element, number>;
+
+const YANG_GAN = new Set(["甲", "丙", "戊", "庚", "壬"]);
+
+const GENERATES: Record<Element, Element> = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
+const CONTROLS: Record<Element, Element> = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
+
+function ganAt(index: number): string {
+  const gan = GAN_VALUES[index];
+  if (!gan) throw new Error(`天干索引越界：${index}`);
+  return gan;
 }
 
-export function getBaziChart(input: BaziInput): BaziChart {
-  const { year, month, day, hour, minute, gender } = input;
-  const sect: DaySect = input.sect === 1 ? 1 : 2;
+/** 以日主天干推导另一天干的十神，用于修正晚子时（sect=2）的时干。 */
+function tenGodOf(dayGan: string, targetGan: string): string {
+  const dayElement = ganElement(dayGan);
+  const targetElement = ganElement(targetGan);
+  const samePolarity = YANG_GAN.has(dayGan) === YANG_GAN.has(targetGan);
 
-  if (gender !== "male" && gender !== "female") {
-    throw new Error("性别需为 male 或 female");
-  }
-  assertInteger("年份", year, 1900, 2100);
-  assertInteger("月份", month, 1, 12);
-  assertInteger("日期", day, 1, 31);
-  assertInteger("小时", hour, 0, 23);
-  assertInteger("分钟", minute, 0, 59);
+  if (dayElement === targetElement) return samePolarity ? "比肩" : "劫财";
+  if (GENERATES[dayElement] === targetElement) return samePolarity ? "食神" : "伤官";
+  if (CONTROLS[dayElement] === targetElement) return samePolarity ? "偏财" : "正财";
+  if (CONTROLS[targetElement] === dayElement) return samePolarity ? "七杀" : "正官";
+  return samePolarity ? "偏印" : "正印";
+}
+
+function ganElement(gan: string): Element {
+  const element = GAN_ELEMENT[gan];
+  if (!element) throw new Error(`未知天干：${gan}`);
+  return element;
+}
+
+function zhiElement(zhi: string): Element {
+  const element = ZHI_ELEMENT[zhi];
+  if (!element) throw new Error(`未知地支：${zhi}`);
+  return element;
+}
+
+function emptyElementCount(): ElementCount {
+  return { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 };
+}
+
+/**
+ * 确定性八字排盘：四柱、十神、藏干、十二长生、五行统计、大运与起运。
+ * 排盘完全由 lunar-javascript 与本地映射完成，不涉及任何模型推断。
+ */
+export function getBaziChart(input: BaziRequest): ChartFacts {
+  const parsedInput = BaziRequestSchema.parse(input);
+  const { year, month, day, hour, minute, gender } = parsedInput;
+  const sect = parsedInput.sect === 2 ? 2 : 1;
 
   const dateCheck = new Date(year, month - 1, day);
   if (dateCheck.getFullYear() !== year || dateCheck.getMonth() !== month - 1 || dateCheck.getDate() !== day) {
@@ -96,9 +108,16 @@ export function getBaziChart(input: BaziInput): BaziChart {
   const eightChar = lunar.getEightChar();
   eightChar.setSect(sect);
 
-  const pillars: Record<PillarKey, BaziPillar> = {
+  const dayGan = eightChar.getDayGan();
+  const isLateZiWithTodaySect = sect === 2 && hour === 23;
+  const timeGan = isLateZiWithTodaySect
+    ? ganAt(((GAN_VALUES.indexOf(dayGan as (typeof GAN_VALUES)[number]) % 5) * 2) % 10)
+    : eightChar.getTimeGan();
+  const timeShiShenGan = isLateZiWithTodaySect ? tenGodOf(dayGan, timeGan) : eightChar.getTimeShiShenGan();
+
+  const pillars = {
     year: {
-      key: "year",
+      key: "year" as const,
       label: PILLAR_LABELS.year,
       gan: eightChar.getYearGan(),
       zhi: eightChar.getYearZhi(),
@@ -106,9 +125,10 @@ export function getBaziChart(input: BaziInput): BaziChart {
       shiShenGan: eightChar.getYearShiShenGan(),
       hideGan: eightChar.getYearHideGan(),
       shiShenZhi: eightChar.getYearShiShenZhi(),
+      diShi: eightChar.getYearDiShi(),
     },
     month: {
-      key: "month",
+      key: "month" as const,
       label: PILLAR_LABELS.month,
       gan: eightChar.getMonthGan(),
       zhi: eightChar.getMonthZhi(),
@@ -116,9 +136,10 @@ export function getBaziChart(input: BaziInput): BaziChart {
       shiShenGan: eightChar.getMonthShiShenGan(),
       hideGan: eightChar.getMonthHideGan(),
       shiShenZhi: eightChar.getMonthShiShenZhi(),
+      diShi: eightChar.getMonthDiShi(),
     },
     day: {
-      key: "day",
+      key: "day" as const,
       label: PILLAR_LABELS.day,
       gan: eightChar.getDayGan(),
       zhi: eightChar.getDayZhi(),
@@ -126,21 +147,51 @@ export function getBaziChart(input: BaziInput): BaziChart {
       shiShenGan: eightChar.getDayShiShenGan(),
       hideGan: eightChar.getDayHideGan(),
       shiShenZhi: eightChar.getDayShiShenZhi(),
+      diShi: eightChar.getDayDiShi(),
     },
     hour: {
-      key: "hour",
+      key: "hour" as const,
       label: PILLAR_LABELS.hour,
-      gan: eightChar.getTimeGan(),
+      gan: timeGan,
       zhi: eightChar.getTimeZhi(),
-      ganZhi: eightChar.getTime(),
-      shiShenGan: eightChar.getTimeShiShenGan(),
+      ganZhi: `${timeGan}${eightChar.getTimeZhi()}`,
+      shiShenGan: timeShiShenGan,
       hideGan: eightChar.getTimeHideGan(),
       shiShenZhi: eightChar.getTimeShiShenZhi(),
+      diShi: eightChar.getTimeDiShi(),
     },
   };
 
-  return {
-    input: { year, month, day, hour, minute, gender, sect },
+  const visible = emptyElementCount();
+  const hidden = emptyElementCount();
+  for (const key of PILLAR_ORDER) {
+    const pillar = pillars[key];
+    visible[ganElement(pillar.gan)] += 1;
+    visible[zhiElement(pillar.zhi)] += 1;
+    for (const gan of pillar.hideGan) {
+      hidden[ganElement(gan)] += 1;
+    }
+  }
+  const total = emptyElementCount();
+  for (const element of Object.keys(total) as Element[]) {
+    total[element] = visible[element] + hidden[element];
+  }
+
+  const yun = eightChar.getYun(gender === "male" ? 1 : 0, 2);
+  const daYun = yun
+    .getDaYun(10)
+    .filter((item) => item.getIndex() > 0)
+    .map((item) => ({
+      index: item.getIndex(),
+      ganZhi: item.getGanZhi(),
+      startAge: item.getStartAge(),
+      endAge: item.getEndAge(),
+      startYear: item.getStartYear(),
+      endYear: item.getEndYear(),
+    }));
+
+  return ChartFactsSchema.parse({
+    input: { ...parsedInput, sect },
     genderLabel: gender === "male" ? "男" : "女",
     solar: {
       text: solar.toYmdHms(),
@@ -153,14 +204,27 @@ export function getBaziChart(input: BaziInput): BaziChart {
     lunar: {
       text: lunar.toString(),
     },
-    dayMaster: eightChar.getDayGan(),
+    dayMaster: dayGan,
     pillars,
+    wuXing: { visible, hidden, total },
+    luck: {
+      forward: yun.isForward(),
+      startAge: {
+        years: yun.getStartYear(),
+        months: yun.getStartMonth(),
+        days: yun.getStartDay(),
+        hours: yun.getStartHour(),
+      },
+      startSolar: yun.getStartSolar().toYmdHms(),
+      daYun,
+    },
     conventions: {
       sect,
       sectLabel: sect === 1 ? "晚子时换日（23:00 起算次日）" : "晚子时归当日（00:00 换日）",
       yearBoundary: "以立春交接时刻为年柱分界",
       monthBoundary: "以节气交接时刻为月柱分界",
       timezone: "按输入钟表时间直接排盘，暂未做真太阳时与经度校正",
+      luckStartMethod: "按出生时刻与节气交接时刻的分钟差折算，3 日折 1 年",
     },
-  };
+  });
 }

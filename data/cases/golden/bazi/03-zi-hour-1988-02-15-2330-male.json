@@ -1,0 +1,227 @@
+{
+  "name": "23 点子时：1988-02-15 23:30 男（默认换日）",
+  "description": "默认 sect=1，晚子时按 23:00 换日，日柱为次日辛丑，时柱戊子。",
+  "reference": "测试另校验 sect=2（晚子时归当日）时得庚子日、丙子时，且时干十神为七杀。",
+  "input": {
+    "year": 1988,
+    "month": 2,
+    "day": 15,
+    "hour": 23,
+    "minute": 30,
+    "gender": "male",
+    "sect": 1
+  },
+  "expected": {
+    "input": {
+      "year": 1988,
+      "month": 2,
+      "day": 15,
+      "hour": 23,
+      "minute": 30,
+      "gender": "male",
+      "sect": 1
+    },
+    "genderLabel": "男",
+    "solar": {
+      "text": "1988-02-15 23:30:00",
+      "year": 1988,
+      "month": 2,
+      "day": 15,
+      "hour": 23,
+      "minute": 30
+    },
+    "lunar": {
+      "text": "一九八七年腊月廿八"
+    },
+    "dayMaster": "辛",
+    "pillars": {
+      "year": {
+        "key": "year",
+        "label": "年柱",
+        "gan": "戊",
+        "zhi": "辰",
+        "ganZhi": "戊辰",
+        "shiShenGan": "正印",
+        "hideGan": [
+          "戊",
+          "乙",
+          "癸"
+        ],
+        "shiShenZhi": [
+          "正印",
+          "偏财",
+          "食神"
+        ],
+        "diShi": "墓"
+      },
+      "month": {
+        "key": "month",
+        "label": "月柱",
+        "gan": "甲",
+        "zhi": "寅",
+        "ganZhi": "甲寅",
+        "shiShenGan": "正财",
+        "hideGan": [
+          "甲",
+          "丙",
+          "戊"
+        ],
+        "shiShenZhi": [
+          "正财",
+          "正官",
+          "正印"
+        ],
+        "diShi": "胎"
+      },
+      "day": {
+        "key": "day",
+        "label": "日柱",
+        "gan": "辛",
+        "zhi": "丑",
+        "ganZhi": "辛丑",
+        "shiShenGan": "日主",
+        "hideGan": [
+          "己",
+          "癸",
+          "辛"
+        ],
+        "shiShenZhi": [
+          "偏印",
+          "食神",
+          "比肩"
+        ],
+        "diShi": "养"
+      },
+      "hour": {
+        "key": "hour",
+        "label": "时柱",
+        "gan": "戊",
+        "zhi": "子",
+        "ganZhi": "戊子",
+        "shiShenGan": "正印",
+        "hideGan": [
+          "癸"
+        ],
+        "shiShenZhi": [
+          "食神"
+        ],
+        "diShi": "长生"
+      }
+    },
+    "wuXing": {
+      "visible": {
+        "木": 2,
+        "火": 0,
+        "土": 4,
+        "金": 1,
+        "水": 1
+      },
+      "hidden": {
+        "木": 2,
+        "火": 1,
+        "土": 3,
+        "金": 1,
+        "水": 3
+      },
+      "total": {
+        "木": 4,
+        "火": 1,
+        "土": 7,
+        "金": 2,
+        "水": 4
+      }
+    },
+    "luck": {
+      "forward": true,
+      "startAge": {
+        "years": 6,
+        "months": 2,
+        "days": 26,
+        "hours": 8
+      },
+      "startSolar": "1994-05-12 07:30:00",
+      "daYun": [
+        {
+          "index": 1,
+          "ganZhi": "乙卯",
+          "startAge": 7,
+          "endAge": 16,
+          "startYear": 1994,
+          "endYear": 2003
+        },
+        {
+          "index": 2,
+          "ganZhi": "丙辰",
+          "startAge": 17,
+          "endAge": 26,
+          "startYear": 2004,
+          "endYear": 2013
+        },
+        {
+          "index": 3,
+          "ganZhi": "丁巳",
+          "startAge": 27,
+          "endAge": 36,
+          "startYear": 2014,
+          "endYear": 2023
+        },
+        {
+          "index": 4,
+          "ganZhi": "戊午",
+          "startAge": 37,
+          "endAge": 46,
+          "startYear": 2024,
+          "endYear": 2033
+        },
+        {
+          "index": 5,
+          "ganZhi": "己未",
+          "startAge": 47,
+          "endAge": 56,
+          "startYear": 2034,
+          "endYear": 2043
+        },
+        {
+          "index": 6,
+          "ganZhi": "庚申",
+          "startAge": 57,
+          "endAge": 66,
+          "startYear": 2044,
+          "endYear": 2053
+        },
+        {
+          "index": 7,
+          "ganZhi": "辛酉",
+          "startAge": 67,
+          "endAge": 76,
+          "startYear": 2054,
+          "endYear": 2063
+        },
+        {
+          "index": 8,
+          "ganZhi": "壬戌",
+          "startAge": 77,
+          "endAge": 86,
+          "startYear": 2064,
+          "endYear": 2073
+        },
+        {
+          "index": 9,
+          "ganZhi": "癸亥",
+          "startAge": 87,
+          "endAge": 96,
+          "startYear": 2074,
+          "endYear": 2083
+        }
+      ]
+    },
+    "conventions": {
+      "sect": 1,
+      "sectLabel": "晚子时换日（23:00 起算次日）",
+      "yearBoundary": "以立春交接时刻为年柱分界",
+      "monthBoundary": "以节气交接时刻为月柱分界",
+      "timezone": "按输入钟表时间直接排盘，暂未做真太阳时与经度校正",
+      "luckStartMethod": "按出生时刻与节气交接时刻的分钟差折算，3 日折 1 年"
+    }
+  }
+}

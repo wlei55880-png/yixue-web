@@ -1,0 +1,227 @@
+{
+  "name": "立春交界：2000-02-04 20:39 男（立春前）",
+  "description": "2000 年立春交接时刻为 20:40:24，本案例取交接前 1 分 39 秒，年柱仍为己卯、月柱仍为丁丑。",
+  "reference": "节气时刻取自 lunar-javascript 1.7.8 的立春交接时间；测试另校验 20:41 时切换为庚辰年、戊寅月。",
+  "input": {
+    "year": 2000,
+    "month": 2,
+    "day": 4,
+    "hour": 20,
+    "minute": 39,
+    "gender": "male",
+    "sect": 1
+  },
+  "expected": {
+    "input": {
+      "year": 2000,
+      "month": 2,
+      "day": 4,
+      "hour": 20,
+      "minute": 39,
+      "gender": "male",
+      "sect": 1
+    },
+    "genderLabel": "男",
+    "solar": {
+      "text": "2000-02-04 20:39:00",
+      "year": 2000,
+      "month": 2,
+      "day": 4,
+      "hour": 20,
+      "minute": 39
+    },
+    "lunar": {
+      "text": "一九九九年腊月廿九"
+    },
+    "dayMaster": "壬",
+    "pillars": {
+      "year": {
+        "key": "year",
+        "label": "年柱",
+        "gan": "己",
+        "zhi": "卯",
+        "ganZhi": "己卯",
+        "shiShenGan": "正官",
+        "hideGan": [
+          "乙"
+        ],
+        "shiShenZhi": [
+          "伤官"
+        ],
+        "diShi": "死"
+      },
+      "month": {
+        "key": "month",
+        "label": "月柱",
+        "gan": "丁",
+        "zhi": "丑",
+        "ganZhi": "丁丑",
+        "shiShenGan": "正财",
+        "hideGan": [
+          "己",
+          "癸",
+          "辛"
+        ],
+        "shiShenZhi": [
+          "正官",
+          "劫财",
+          "正印"
+        ],
+        "diShi": "衰"
+      },
+      "day": {
+        "key": "day",
+        "label": "日柱",
+        "gan": "壬",
+        "zhi": "辰",
+        "ganZhi": "壬辰",
+        "shiShenGan": "日主",
+        "hideGan": [
+          "戊",
+          "乙",
+          "癸"
+        ],
+        "shiShenZhi": [
+          "七杀",
+          "伤官",
+          "劫财"
+        ],
+        "diShi": "墓"
+      },
+      "hour": {
+        "key": "hour",
+        "label": "时柱",
+        "gan": "庚",
+        "zhi": "戌",
+        "ganZhi": "庚戌",
+        "shiShenGan": "偏印",
+        "hideGan": [
+          "戊",
+          "辛",
+          "丁"
+        ],
+        "shiShenZhi": [
+          "七杀",
+          "正印",
+          "正财"
+        ],
+        "diShi": "冠带"
+      }
+    },
+    "wuXing": {
+      "visible": {
+        "木": 1,
+        "火": 1,
+        "土": 4,
+        "金": 1,
+        "水": 1
+      },
+      "hidden": {
+        "木": 2,
+        "火": 1,
+        "土": 3,
+        "金": 2,
+        "水": 2
+      },
+      "total": {
+        "木": 3,
+        "火": 2,
+        "土": 7,
+        "金": 3,
+        "水": 3
+      }
+    },
+    "luck": {
+      "forward": false,
+      "startAge": {
+        "years": 9,
+        "months": 9,
+        "days": 28,
+        "hours": 6
+      },
+      "startSolar": "2009-12-03 02:39:00",
+      "daYun": [
+        {
+          "index": 1,
+          "ganZhi": "丙子",
+          "startAge": 10,
+          "endAge": 19,
+          "startYear": 2009,
+          "endYear": 2018
+        },
+        {
+          "index": 2,
+          "ganZhi": "乙亥",
+          "startAge": 20,
+          "endAge": 29,
+          "startYear": 2019,
+          "endYear": 2028
+        },
+        {
+          "index": 3,
+          "ganZhi": "甲戌",
+          "startAge": 30,
+          "endAge": 39,
+          "startYear": 2029,
+          "endYear": 2038
+        },
+        {
+          "index": 4,
+          "ganZhi": "癸酉",
+          "startAge": 40,
+          "endAge": 49,
+          "startYear": 2039,
+          "endYear": 2048
+        },
+        {
+          "index": 5,
+          "ganZhi": "壬申",
+          "startAge": 50,
+          "endAge": 59,
+          "startYear": 2049,
+          "endYear": 2058
+        },
+        {
+          "index": 6,
+          "ganZhi": "辛未",
+          "startAge": 60,
+          "endAge": 69,
+          "startYear": 2059,
+          "endYear": 2068
+        },
+        {
+          "index": 7,
+          "ganZhi": "庚午",
+          "startAge": 70,
+          "endAge": 79,
+          "startYear": 2069,
+          "endYear": 2078
+        },
+        {
+          "index": 8,
+          "ganZhi": "己巳",
+          "startAge": 80,
+          "endAge": 89,
+          "startYear": 2079,
+          "endYear": 2088
+        },
+        {
+          "index": 9,
+          "ganZhi": "戊辰",
+          "startAge": 90,
+          "endAge": 99,
+          "startYear": 2089,
+          "endYear": 2098
+        }
+      ]
+    },
+    "conventions": {
+      "sect": 1,
+      "sectLabel": "晚子时换日（23:00 起算次日）",
+      "yearBoundary": "以立春交接时刻为年柱分界",
+      "monthBoundary": "以节气交接时刻为月柱分界",
+      "timezone": "按输入钟表时间直接排盘，暂未做真太阳时与经度校正",
+      "luckStartMethod": "按出生时刻与节气交接时刻的分钟差折算，3 日折 1 年"
+    }
+  }
+}

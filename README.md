@@ -27,8 +27,24 @@ pnpm build          # 生产构建
 - M1：Next.js 16 App Router + TypeScript + Tailwind CSS v4 + shadcn/ui 风格组件（本地 vendored）
 - M1：首页：V1 闭环说明、产品边界、里程碑路线、免责声明
 - M1：`src/lib/compliance.ts`：绝对化预测 / 恐吓 / 付费改运 / 越界专业建议的词表扫描，后续用于校验 LLM 报告
-- M2：`src/lib/engines/bazi.ts`：基于 lunar-javascript 的确定性排盘（四柱、十神、藏干），显式记录子时流派与节气分界
-- M2：首页「快速排盘」表单，客户端直接调用排盘引擎并展示四柱与原始 JSON（暂无黄金命例测试与 API）
+- M2：`src/lib/engines/bazi.ts`：基于 lunar-javascript 的确定性排盘（四柱、十神、藏干、十二长生、五行统计、大运与起运），显式记录子时流派与节气分界
+- M2：`src/lib/schemas/chart-facts.ts`：zod 入参 / 出参 Schema，拦截干支拼接、五行合计、大运跨度等结构性错误
+- M2：`POST /api/bazi/chart`：服务端排盘接口，返回完整 `ChartFacts` JSON
+- M2：`data/cases/golden/bazi/`：3 个黄金案例（普通、立春交界、23 点子时），Vitest 全量快照回归
+- M2：首页「快速排盘」表单，客户端直接调用排盘引擎并展示四柱与原始 JSON
+
+## API：确定性排盘
+
+```bash
+curl -X POST http://localhost:3000/api/bazi/chart \
+  -H "Content-Type: application/json" \
+  -d '{"year":1990,"month":1,"day":1,"hour":12,"minute":0,"gender":"male"}'
+```
+
+- 必填：`year` 1900–2100、`month` 1–12、`day` 1–31、`hour` 0–23、`minute` 0–59、`gender`（`male` / `female`）
+- 可选：`sect`（1 = 晚子时 23:00 换日，默认；2 = 晚子时归当日）
+- 成功：200，返回 `ChartFacts`（四柱、十神、藏干、十二长生、五行统计、大运、起运、口径说明）
+- 失败：400，`{ "error": { "code": "INVALID_JSON" | "INVALID_INPUT" | "CHART_FAILED", "message": "...", "issues"?: [...] } }`
 
 ## 架构边界（硬约束）
 
@@ -43,9 +59,12 @@ pnpm build          # 生产构建
 
 ```text
 src/
-  app/             # App Router 页面与全局样式
+  app/             # App Router 页面与 /api/bazi/chart
   components/      # 站点组件 + ui 原子组件
-  lib/             # 领域无关工具、项目常量、合规扫描
+  lib/
+    engines/       # 确定性排盘引擎
+    schemas/       # zod 入参 / 出参 Schema
+data/cases/golden/ # 黄金命例快照
 e2e/               # Playwright 用例
 ```
 
