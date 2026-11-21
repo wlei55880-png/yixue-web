@@ -9,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: `http://127.0.0.1:${PORT}`,
+    baseURL: `http://localhost:${PORT}`,
     trace: "on-first-retry",
     channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
   },
@@ -25,7 +25,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `pnpm dev --port ${PORT}`,
-    url: `http://127.0.0.1:${PORT}`,
+    url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

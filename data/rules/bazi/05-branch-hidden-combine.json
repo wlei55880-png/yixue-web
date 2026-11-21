@@ -1,0 +1,24 @@
+{
+  "id": "bazi.hidden-combine.branch-pairs.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "子平藏干相合说",
+    "note": "暗合取两地支藏干相合之义：子巳（戊癸）、寅丑（甲己、丙辛）、卯申（乙庚）、午亥（丁壬、甲己）。"
+  },
+  "name": "地支暗合",
+  "condition": {
+    "type": "branchHiddenCombine",
+    "pairs": [
+      ["子", "巳"],
+      ["寅", "丑"],
+      ["卯", "申"],
+      ["午", "亥"]
+    ]
+  },
+  "output": {
+    "summary": "四柱地支之间存在藏干相合的暗合关系。",
+    "caveat": "暗合属辅助关系，各流派取象不一，需与明合、六冲等关系并看，不能单独作为结论。"
+  },
+  "conflictGroup": "branch.combine",
+  "confidence": "medium"
+}

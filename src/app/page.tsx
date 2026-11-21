@@ -123,7 +123,7 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="QUICK CHART"
             title="四柱试排"
-            description="填写公历出生时间，调用排盘引擎得到四柱、十神、藏干、十二长生、五行统计与大运。当前为 M2 确定性排盘，不含规则卡与解释。"
+            description="填写公历出生时间，调用排盘引擎得到四柱、十神、藏干、十二长生、五行统计与大运，并在下方展示命中的规则卡。当前不含 LLM 解释。"
           />
           <div className="mt-8">
             <BaziForm />

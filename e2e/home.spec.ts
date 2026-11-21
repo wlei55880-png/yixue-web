@@ -38,3 +38,30 @@ test.describe("首页与边界声明", () => {
     expect(overflow).toBeLessThanOrEqual(1);
   });
 });
+
+test.describe("规则命中面板", () => {
+  test("默认排盘展示命中的规则卡", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "排盘" }).click();
+
+    await expect(page.getByRole("heading", { name: "命理分析（规则命中）" })).toBeVisible();
+    await expect(page.getByText("地支子午冲")).toBeVisible();
+    await expect(page.getByText("地支暗合")).toBeVisible();
+    await expect(page.getByText("来源：《渊海子平》")).toBeVisible();
+    await expect(page.getByText("规则编号：bazi.clash.zi-wu.001")).toBeVisible();
+  });
+
+  test("无命中时展示空状态", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByLabel("年").fill("1970");
+    await page.getByLabel("月").fill("1");
+    await page.getByLabel("日").fill("3");
+    await page.getByLabel("时").fill("0");
+    await page.getByLabel("分").fill("30");
+    await page.getByRole("button", { name: "排盘" }).click();
+
+    await expect(page.getByText("暂无规则命中")).toBeVisible();
+  });
+});

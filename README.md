@@ -32,6 +32,10 @@ pnpm build          # 生产构建
 - M2：`POST /api/bazi/chart`：服务端排盘接口，返回完整 `ChartFacts` JSON
 - M2：`data/cases/golden/bazi/`：3 个黄金案例（普通、立春交界、23 点子时），Vitest 全量快照回归
 - M2：首页「快速排盘」表单，客户端直接调用排盘引擎并展示四柱与原始 JSON
+- M3：`src/lib/schemas/rule-card.ts`：规则卡 Schema（编号、流派、来源、条件、结论、冲突组、置信度），条件 DSL 校验冲对与暗合对
+- M3：`data/rules/bazi/`：5 条子平基础规则（日主同党极旺、五行缺火、天干透正官、地支子午冲、地支暗合）
+- M3：`src/lib/engines/rules.ts`：确定性 `evaluateRules()`，输出命中规则与可追溯证据
+- M3：首页排盘结果下方「命理分析（规则命中）」面板，无命中时显示「暂无规则命中」
 
 ## API：确定性排盘
 
@@ -62,9 +66,11 @@ src/
   app/             # App Router 页面与 /api/bazi/chart
   components/      # 站点组件 + ui 原子组件
   lib/
-    engines/       # 确定性排盘引擎
+    engines/       # 确定性排盘引擎与规则执行器
+    rules/         # 规则库加载与校验
     schemas/       # zod 入参 / 出参 Schema
 data/cases/golden/ # 黄金命例快照
+data/rules/bazi/   # 八字规则卡 JSON
 e2e/               # Playwright 用例
 ```
 

@@ -1,0 +1,19 @@
+{
+  "id": "bazi.clash.zi-wu.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "子午为地支六冲之一。本规则只判断四柱地支是否同时出现子与午，不延伸判断冲力强弱。"
+  },
+  "name": "地支子午冲",
+  "condition": {
+    "type": "branchClash",
+    "branches": ["子", "午"]
+  },
+  "output": {
+    "summary": "四柱地支同时出现子与午，构成子午冲。",
+    "caveat": "冲的吉凶需结合所临十神、旺衰与合化关系判断，不可单凭一冲断吉凶。"
+  },
+  "conflictGroup": "branch.clash",
+  "confidence": "high"
+}

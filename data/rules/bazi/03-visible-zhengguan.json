@@ -1,0 +1,20 @@
+{
+  "id": "bazi.ten-god.visible-zhengguan.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《子平真诠》",
+    "note": "正官取「克我者、阴阳异性」之义。本规则仅判断正官是否透于天干，不判断官星成败与格局高低。"
+  },
+  "name": "天干透正官",
+  "condition": {
+    "type": "visibleTenGod",
+    "tenGod": "正官",
+    "minCount": 1
+  },
+  "output": {
+    "summary": "四柱天干至少出现一位正官，正官星明透于外。",
+    "caveat": "透出只表示该十神显于天干，吉凶仍需结合旺衰、官星是否受制以及日主能否承担来判断。"
+  },
+  "conflictGroup": "ten-god.officer",
+  "confidence": "high"
+}
