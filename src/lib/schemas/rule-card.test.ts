@@ -14,8 +14,8 @@ const ruleDocuments = ruleFiles.map(
 );
 
 describe("规则卡文件", () => {
-  it("收录 5 条基础规则，且全部通过 Schema 校验", () => {
-    expect(ruleFiles).toHaveLength(5);
+  it("收录 15 条基础规则，且全部通过 Schema 校验", () => {
+    expect(ruleFiles).toHaveLength(15);
     const parsed = RuleCardListSchema.safeParse(ruleDocuments);
     const detail = parsed.success ? "" : JSON.stringify(parsed.error.issues);
     expect(parsed.success, detail).toBe(true);
@@ -41,6 +41,11 @@ describe("RuleCardSchema 防护", () => {
 
   it("拒绝非法的地支暗合对", () => {
     const invalid = { ...base, condition: { type: "branchHiddenCombine", pairs: [["子", "午"]] } };
+    expect(RuleCardSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("拒绝非法的地支三合局", () => {
+    const invalid = { ...base, condition: { type: "branchTripleCombine", branches: ["申", "子", "午"] } };
     expect(RuleCardSchema.safeParse(invalid).success).toBe(false);
   });
 

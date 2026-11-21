@@ -1,0 +1,20 @@
+{
+  "id": "bazi.ten-god.visible-pianyin.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "偏印取「生我者、阴阳同性」之义。本规则仅判断偏印是否透于天干，不判断枭神夺食等组合。"
+  },
+  "name": "天干透偏印",
+  "condition": {
+    "type": "visibleTenGod",
+    "tenGod": "偏印",
+    "minCount": 1
+  },
+  "output": {
+    "summary": "四柱天干至少出现一位偏印，偏印星明透于外。",
+    "caveat": "偏印透出需结合食神、财星与日主旺衰判断，不可单以偏印定性吉凶。"
+  },
+  "conflictGroup": "ten-god.seal-mix",
+  "confidence": "high"
+}

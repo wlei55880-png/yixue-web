@@ -1,0 +1,19 @@
+{
+  "id": "bazi.strength.day-master-rootless.001",
+  "school": "盲派·旺衰",
+  "source": {
+    "work": "盲派命理·旺衰法",
+    "note": "以四柱地支藏干是否含日主同类五行作为通根口径。本规则只判断「无根」这一事实，不直接等同身弱结论。"
+  },
+  "name": "日主无根（盲派）",
+  "condition": {
+    "type": "dayMasterRoot",
+    "present": false
+  },
+  "output": {
+    "summary": "四柱地支藏干中没有与日主同类的五行，按盲派通根口径视为日主无根。",
+    "caveat": "无根表示地支缺乏同类支撑，是否身弱仍需看月令、天干帮扶与整体气势；与子平同党占比口径可能得出不同判断。"
+  },
+  "conflictGroup": "strength.day-master",
+  "confidence": "medium"
+}

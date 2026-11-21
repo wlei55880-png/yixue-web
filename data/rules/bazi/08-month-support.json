@@ -1,0 +1,19 @@
+{
+  "id": "bazi.strength.month-support.001",
+  "school": "子平·旺衰",
+  "source": {
+    "work": "《子平真诠》",
+    "note": "月令为提纲。本规则以月支五行与日主同气或生扶日主作为「得令」的判定口径。"
+  },
+  "name": "日主得月令",
+  "condition": {
+    "type": "monthRelation",
+    "relations": ["same", "generatesMe"]
+  },
+  "output": {
+    "summary": "月支五行与日主同气或生扶日主，按本规则口径视为得令。",
+    "caveat": "得令只说明月令一端有利，不等于全局身旺；仍需结合通根、透干与刑冲合害判断。"
+  },
+  "conflictGroup": "strength.season",
+  "confidence": "high"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "bazi.wuxing.missing-metal.001",
+  "school": "子平·五行",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "五行有无按四柱天干、地支及藏干统计。本规则以合计为 0 判定「缺金」，明见与藏干均无金方成立。"
+  },
+  "name": "五行缺金",
+  "condition": {
+    "type": "elementAbsent",
+    "element": "金",
+    "scope": "total"
+  },
+  "output": {
+    "summary": "四柱明见与藏干统计中均无金，金元素在本命局缺席。",
+    "caveat": "缺金不等于必须补金，需结合日主旺衰、调候与格局判断；本规则只陈述五行统计事实，不给出改运建议。"
+  },
+  "conflictGroup": "wuxing.missing-metal",
+  "confidence": "high"
+}

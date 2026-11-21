@@ -1,0 +1,20 @@
+{
+  "id": "bazi.strength.day-master-allies-35.001",
+  "school": "子平·旺衰",
+  "source": {
+    "work": "《滴天髓》",
+    "note": "以同党（比劫、印星）占比作为可复现的操作化近似，本规则阈值取 35%；流派取值不一。"
+  },
+  "name": "日主同党偏弱（≤35%）",
+  "condition": {
+    "type": "alliesShareBelow",
+    "maxPercent": 35,
+    "includeHidden": true
+  },
+  "output": {
+    "summary": "日主所属五行与生扶日主的五行合计占比不超过 35%，按本规则口径视为身弱。",
+    "caveat": "身弱不等于一定需要生扶，仍需结合月令、调候、格局与冲合关系综合判断；阈值仅为教学用操作化口径。"
+  },
+  "conflictGroup": "strength.day-master",
+  "confidence": "low"
+}

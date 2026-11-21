@@ -48,20 +48,36 @@ test.describe("规则命中面板", () => {
     await expect(page.getByRole("heading", { name: "命理分析（规则命中）" })).toBeVisible();
     await expect(page.getByText("地支子午冲")).toBeVisible();
     await expect(page.getByText("地支暗合")).toBeVisible();
-    await expect(page.getByText("来源：《渊海子平》")).toBeVisible();
+    await expect(page.getByText("来源：《渊海子平》").first()).toBeVisible();
     await expect(page.getByText("规则编号：bazi.clash.zi-wu.001")).toBeVisible();
   });
 
   test("无命中时展示空状态", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByLabel("年").fill("1970");
-    await page.getByLabel("月").fill("1");
-    await page.getByLabel("日").fill("3");
-    await page.getByLabel("时").fill("0");
+    await page.getByLabel("年").fill("1962");
+    await page.getByLabel("月").fill("2");
+    await page.getByLabel("日").fill("9");
+    await page.getByLabel("时").fill("18");
     await page.getByLabel("分").fill("30");
     await page.getByRole("button", { name: "排盘" }).click();
 
-    await expect(page.getByText("暂无规则命中")).toBeVisible();
+    await expect(page.getByText("当前排盘未命中知识库规则")).toBeVisible();
+  });
+
+  test("官杀同透时并列展示冲突组", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByLabel("年").fill("1970");
+    await page.getByLabel("月").fill("1");
+    await page.getByLabel("日").fill("1");
+    await page.getByLabel("时").fill("18");
+    await page.getByLabel("分").fill("30");
+    await page.getByRole("button", { name: "排盘" }).click();
+
+    await expect(page.getByText("冲突组：官杀同透")).toBeVisible();
+    await expect(page.getByText("2 条并列")).toBeVisible();
+    await expect(page.getByText("天干透正官")).toBeVisible();
+    await expect(page.getByText("天干透七杀")).toBeVisible();
   });
 });

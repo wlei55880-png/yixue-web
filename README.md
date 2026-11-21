@@ -32,10 +32,10 @@ pnpm build          # 生产构建
 - M2：`POST /api/bazi/chart`：服务端排盘接口，返回完整 `ChartFacts` JSON
 - M2：`data/cases/golden/bazi/`：3 个黄金案例（普通、立春交界、23 点子时），Vitest 全量快照回归
 - M2：首页「快速排盘」表单，客户端直接调用排盘引擎并展示四柱与原始 JSON
-- M3：`src/lib/schemas/rule-card.ts`：规则卡 Schema（编号、流派、来源、条件、结论、冲突组、置信度），条件 DSL 校验冲对与暗合对
-- M3：`data/rules/bazi/`：5 条子平基础规则（日主同党极旺、五行缺火、天干透正官、地支子午冲、地支暗合）
-- M3：`src/lib/engines/rules.ts`：确定性 `evaluateRules()`，输出命中规则与可追溯证据
-- M3：首页排盘结果下方「命理分析（规则命中）」面板，无命中时显示「暂无规则命中」
+- M3：`src/lib/schemas/rule-card.ts`：规则卡 Schema（编号、流派、来源、条件、结论、冲突组、置信度），条件 DSL 覆盖同党占比、日主通根、月令关系、五行缺失、十神透干、六冲、三合与暗合
+- M3：`data/rules/bazi/`：15 条基础规则（旺衰、十神、五行、刑冲合害，子平与盲派并存）
+- M3：`src/lib/engines/rules.ts`：确定性 `evaluateRules()` 输出命中规则与可追溯证据；`groupRuleHits()` 按冲突组聚合，同组多条并列、不合并裁决
+- M3：首页四柱改为横向网格，每柱列出天干十神与地支藏干；「命理分析（规则命中）」按冲突组分列展示流派与置信度，无命中时显示「当前排盘未命中知识库规则」
 
 ## API：确定性排盘
 

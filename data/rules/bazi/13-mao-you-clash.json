@@ -1,0 +1,19 @@
+{
+  "id": "bazi.clash.mao-you.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "卯酉为地支六冲之一。本规则只判断四柱地支是否同时出现卯与酉，不延伸判断冲力强弱。"
+  },
+  "name": "地支卯酉冲",
+  "condition": {
+    "type": "branchClash",
+    "branches": ["卯", "酉"]
+  },
+  "output": {
+    "summary": "四柱地支同时出现卯与酉，构成卯酉冲。",
+    "caveat": "冲的吉凶需结合所临十神、旺衰与合化关系判断，不可单凭一冲断吉凶。"
+  },
+  "conflictGroup": "branch.clash",
+  "confidence": "high"
+}

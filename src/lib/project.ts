@@ -23,7 +23,7 @@ export const MILESTONES: readonly Milestone[] = [
   {
     id: "M3",
     title: "规则知识库与冲突组",
-    summary: "已完成第一步：规则卡 Schema、5 条子平基础规则、确定性规则执行器与首页规则命中面板；知识覆盖度校验与更多规则待补。",
+    summary: "规则卡 Schema、条件 DSL、15 条旺衰/十神/五行/刑冲合害规则、冲突组聚合与首页命中面板；四柱横向网格展示十神与藏干。",
     status: "in_progress",
   },
   {

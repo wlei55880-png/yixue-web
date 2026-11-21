@@ -1,0 +1,20 @@
+{
+  "id": "bazi.ten-god.visible-zhengyin.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "正印取「生我者、阴阳异性」之义。本规则仅判断正印是否透于天干，不判断印星成败。"
+  },
+  "name": "天干透正印",
+  "condition": {
+    "type": "visibleTenGod",
+    "tenGod": "正印",
+    "minCount": 1
+  },
+  "output": {
+    "summary": "四柱天干至少出现一位正印，正印星明透于外。",
+    "caveat": "印星透出需结合日主旺衰与官杀、财星关系判断；印多未必为吉，印少未必为凶。"
+  },
+  "conflictGroup": "ten-god.seal-mix",
+  "confidence": "high"
+}

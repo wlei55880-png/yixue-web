@@ -2,8 +2,15 @@ import { z } from "zod";
 
 import { ELEMENT_VALUES, ZHI_VALUES } from "@/lib/schemas/chart-facts";
 
-export const SCHOOL_VALUES = ["子平·旺衰", "子平·五行", "子平·十神", "子平·刑冲合害"] as const;
+export const SCHOOL_VALUES = [
+  "子平·旺衰",
+  "子平·五行",
+  "子平·十神",
+  "子平·刑冲合害",
+  "盲派·旺衰",
+] as const;
 export const CONFIDENCE_VALUES = ["high", "medium", "low"] as const;
+export const MONTH_RELATION_VALUES = ["same", "generatesMe", "drainsMe", "controlsMe", "controlledByMe"] as const;
 
 export const TEN_GOD_VALUES = [
   "比肩",
@@ -36,8 +43,17 @@ export const HIDDEN_COMBINE_PAIRS = [
   ["午", "亥"],
 ] as const;
 
+/** 地支三合局（三支齐现，合化与否另论）。 */
+export const TRIPLE_COMBINE_GROUPS = [
+  { branches: ["申", "子", "辰"], element: "水" },
+  { branches: ["亥", "卯", "未"], element: "木" },
+  { branches: ["寅", "午", "戌"], element: "火" },
+  { branches: ["巳", "酉", "丑"], element: "金" },
+] as const;
+
 const ZhiSchema = z.enum(ZHI_VALUES);
 const TenGodSchema = z.enum(TEN_GOD_VALUES);
+const MonthRelationSchema = z.enum(MONTH_RELATION_VALUES);
 
 function isSamePair(pair: readonly [string, string], a: string, b: string): boolean {
   return (pair[0] === a && pair[1] === b) || (pair[0] === b && pair[1] === a);
@@ -49,6 +65,25 @@ const ConditionSchema = z.discriminatedUnion("type", [
       type: z.literal("alliesShare"),
       minPercent: z.number().int().min(1, "阈值需在 1–100 之间").max(100, "阈值需在 1–100 之间"),
       includeHidden: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("alliesShareBelow"),
+      maxPercent: z.number().int().min(1, "阈值需在 1–100 之间").max(100, "阈值需在 1–100 之间"),
+      includeHidden: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("dayMasterRoot"),
+      present: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("monthRelation"),
+      relations: z.array(MonthRelationSchema).min(1).max(5),
     })
     .strict(),
   z
@@ -75,6 +110,16 @@ const ConditionSchema = z.discriminatedUnion("type", [
       message: "并非有效的地支六冲对",
       path: ["branches"],
     }),
+  z
+    .object({
+      type: z.literal("branchTripleCombine"),
+      branches: z.tuple([ZhiSchema, ZhiSchema, ZhiSchema]),
+    })
+    .strict()
+    .refine(
+      (value) => TRIPLE_COMBINE_GROUPS.some((group) => group.branches.every((branch) => value.branches.includes(branch))),
+      { message: "并非有效的地支三合局", path: ["branches"] },
+    ),
   z
     .object({
       type: z.literal("branchHiddenCombine"),

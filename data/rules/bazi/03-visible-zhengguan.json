@@ -15,6 +15,6 @@
     "summary": "四柱天干至少出现一位正官，正官星明透于外。",
     "caveat": "透出只表示该十神显于天干，吉凶仍需结合旺衰、官星是否受制以及日主能否承担来判断。"
   },
-  "conflictGroup": "ten-god.officer",
+  "conflictGroup": "ten-god.officer-mix",
   "confidence": "high"
 }

@@ -1,0 +1,20 @@
+{
+  "id": "bazi.ten-god.visible-qisha.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "七杀取「克我者、阴阳同性」之义。本规则仅判断七杀是否透于天干，不判断制化与格局成败。"
+  },
+  "name": "天干透七杀",
+  "condition": {
+    "type": "visibleTenGod",
+    "tenGod": "七杀",
+    "minCount": 1
+  },
+  "output": {
+    "summary": "四柱天干至少出现一位七杀，七杀星明透于外。",
+    "caveat": "七杀透出需看是否有食神制、印星化以及日主能否承担；不可单见七杀即断凶。"
+  },
+  "conflictGroup": "ten-god.officer-mix",
+  "confidence": "high"
+}

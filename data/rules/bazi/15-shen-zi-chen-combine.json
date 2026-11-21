@@ -1,0 +1,19 @@
+{
+  "id": "bazi.triple-combine.shen-zi-chen.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "申子辰三合水局，三支齐现为成局前提。本规则只判断三支是否齐全，不判断是否合化。"
+  },
+  "name": "地支申子辰三合水局",
+  "condition": {
+    "type": "branchTripleCombine",
+    "branches": ["申", "子", "辰"]
+  },
+  "output": {
+    "summary": "四柱地支同时出现申、子、辰，构成三合水局的组合条件。",
+    "caveat": "三支齐现不等于一定合化，是否成局需看月令、透干与相邻关系；本规则只陈述组合事实。"
+  },
+  "conflictGroup": "branch.triple-combine",
+  "confidence": "medium"
+}

@@ -5,10 +5,10 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBaziChart } from "@/lib/engines/bazi";
-import { evaluateRules } from "@/lib/engines/rules";
-import { BAZI_RULES } from "@/lib/rules/bazi";
+import { evaluateRules, groupRuleHits } from "@/lib/engines/rules";
+import { BAZI_RULES, CONFLICT_GROUP_LABELS } from "@/lib/rules/bazi";
 import type { ChartFacts, Gender, PillarKey } from "@/lib/schemas/chart-facts";
-import type { RuleConfidence } from "@/lib/schemas/rule-card";
+import type { RuleConfidence, RuleHit } from "@/lib/schemas/rule-card";
 
 const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
 
@@ -25,6 +25,7 @@ export function BaziForm() {
   const [chart, setChart] = React.useState<ChartFacts | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const ruleHits = chart ? evaluateRules(chart, BAZI_RULES) : [];
+  const ruleGroups = groupRuleHits(ruleHits);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,7 +58,7 @@ export function BaziForm() {
       <CardHeader className="gap-2">
         <CardTitle className="font-serif text-xl">快速排盘</CardTitle>
         <p className="text-sm leading-6 text-muted-foreground">
-          输入公历出生时间，立即得到四柱、十神与藏干。时间按钟表时间计算，暂未换算真太阳时。
+          输入公历出生时间，立即得到四柱、十神、藏干、十二长生与大运，并匹配本地规则库。时间按钟表时间计算，暂未换算真太阳时。
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -99,17 +100,25 @@ export function BaziForm() {
             <p className="text-sm text-muted-foreground">
               公历 {chart.solar.text} · 农历 {chart.lunar.text} · {chart.genderLabel} · 日主 {chart.dayMaster}
             </p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
               {PILLAR_ORDER.map((key) => {
                 const pillar = chart.pillars[key];
                 return (
-                  <div key={key} className="rounded-lg border border-border/70 bg-background/60 p-4">
+                  <div key={key} className="rounded-lg border border-border/70 bg-background/60 p-3 sm:p-4">
                     <p className="text-xs tracking-widest text-muted-foreground">{pillar.label}</p>
-                    <p className="mt-1 font-serif text-2xl tracking-[0.2em]">{pillar.ganZhi}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">天干十神：{pillar.shiShenGan}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      藏干：{pillar.hideGan.join("、") || "—"}
-                      {pillar.shiShenZhi.length > 0 ? `（${pillar.shiShenZhi.join("、")}）` : ""}
+                    <p className="mt-1 font-serif text-2xl tracking-[0.15em] sm:tracking-[0.2em]">{pillar.ganZhi}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      天干十神：<span className="text-foreground">{pillar.shiShenGan}</span>
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      地支藏干：
+                      <span className="text-foreground">
+                        {pillar.hideGan.length > 0
+                          ? pillar.hideGan
+                              .map((gan, index) => `${gan}（${pillar.shiShenZhi[index] ?? "—"}）`)
+                              .join("、")
+                          : "—"}
+                      </span>
                     </p>
                   </div>
                 );
@@ -118,36 +127,45 @@ export function BaziForm() {
             <div className="rounded-lg border border-border/70 bg-background/60 p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="font-serif text-lg">命理分析（规则命中）</h3>
-                <span className="text-xs text-muted-foreground">{ruleHits.length} 条规则命中</span>
+                <span className="text-xs text-muted-foreground">
+                  {ruleHits.length === 0 ? "未命中" : `${ruleHits.length} 条规则命中`}
+                </span>
               </div>
               {ruleHits.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">暂无规则命中</p>
+                <p className="mt-3 text-sm text-muted-foreground">当前排盘未命中知识库规则</p>
               ) : (
-                <ul className="mt-3 space-y-3">
-                  {ruleHits.map((hit) => (
-                    <li key={hit.ruleId} className="rounded-md border border-border/60 bg-background/50 p-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{hit.name}</span>
-                        <span className="rounded border border-border/70 px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                          {hit.school}
-                        </span>
-                        <span className="rounded border border-border/70 px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                          置信度：{CONFIDENCE_LABELS[hit.confidence]}
-                        </span>
+                <div className="mt-3 space-y-3">
+                  {ruleGroups.map((group) => {
+                    const [firstHit, ...rest] = group.hits;
+                    if (!firstHit) return null;
+                    if (rest.length === 0) {
+                      return <RuleHitCard key={group.conflictGroup} hit={firstHit} />;
+                    }
+                    return (
+                      <div
+                        key={group.conflictGroup}
+                        className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                            冲突组：{CONFLICT_GROUP_LABELS[group.conflictGroup] ?? group.conflictGroup}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">{group.hits.length} 条并列</span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          同组规则可能给出不同判断，以下逐条展示，保留分歧，不做单一裁决。
+                        </p>
+                        <ul className="mt-2 space-y-2">
+                          {group.hits.map((hit) => (
+                            <li key={hit.ruleId}>
+                              <RuleHitCard hit={hit} />
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        来源：{hit.source.work}
-                        {hit.source.note ? ` · ${hit.source.note}` : ""}
-                      </p>
-                      <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
-                        {hit.evidence.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                      <p className="mt-2 text-[11px] text-muted-foreground/80">规则编号：{hit.ruleId}</p>
-                    </li>
-                  ))}
-                </ul>
+                    );
+                  })}
+                </div>
               )}
             </div>
             <details className="rounded-lg border border-border/70 bg-background/60 p-4 text-sm">
@@ -158,6 +176,32 @@ export function BaziForm() {
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+function RuleHitCard({ hit }: { hit: RuleHit }) {
+  return (
+    <div className="rounded-md border border-border/60 bg-background/50 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium">{hit.name}</span>
+        <span className="rounded border border-border/70 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+          {hit.school}
+        </span>
+        <span className="rounded border border-border/70 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+          置信度：{CONFIDENCE_LABELS[hit.confidence]}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        来源：{hit.source.work}
+        {hit.source.note ? ` · ${hit.source.note}` : ""}
+      </p>
+      <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
+        {hit.evidence.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11px] text-muted-foreground/80">规则编号：{hit.ruleId}</p>
+    </div>
   );
 }
 
