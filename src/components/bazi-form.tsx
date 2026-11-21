@@ -4,16 +4,31 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getBaziChart } from "@/lib/engines/bazi";
-import { evaluateRules, groupRuleHits } from "@/lib/engines/rules";
-import { REPORT_CLOSING, REPORT_QUEUE_MESSAGE, REPORT_TITLE, type BaziReport } from "@/lib/llm/report-types";
-import { BAZI_RULES, CONFLICT_GROUP_LABELS } from "@/lib/rules/bazi";
-import type { ChartFacts, Gender, PillarKey } from "@/lib/schemas/chart-facts";
-import type { RuleConfidence, RuleHit } from "@/lib/schemas/rule-card";
+import {
+  REPORT_CLOSING,
+  REPORT_QUEUE_MESSAGE,
+  REPORT_TITLE,
+  type ApiErrorResponse,
+  type ChartResult,
+  type PublicBaziReport,
+  type PublicRuleHit,
+} from "@/lib/llm/report-types";
+import type { Gender, PillarKey } from "@/lib/schemas/chart-facts";
 
 const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
 
-const CONFIDENCE_LABELS: Record<RuleConfidence, string> = {
+type BirthInput = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  gender: Gender;
+};
+
+type Confidence = PublicRuleHit["confidence"];
+
+const CONFIDENCE_LABELS: Record<Confidence, string> = {
   high: "高",
   medium: "中",
   low: "低",
@@ -23,15 +38,20 @@ const inputClassName =
   "h-9 w-full rounded-md border border-input bg-background/70 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30";
 
 export function BaziForm() {
-  const [chart, setChart] = React.useState<ChartFacts | null>(null);
+  const [result, setResult] = React.useState<ChartResult | null>(null);
+  const [birthInput, setBirthInput] = React.useState<BirthInput | null>(null);
+  const [chartPending, setChartPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [report, setReport] = React.useState<BaziReport | null>(null);
+  const [report, setReport] = React.useState<PublicBaziReport | null>(null);
   const [reportPending, setReportPending] = React.useState(false);
+  const chartRequestId = React.useRef(0);
   const reportRequestId = React.useRef(0);
-  const ruleHits = chart ? evaluateRules(chart, BAZI_RULES) : [];
-  const ruleGroups = groupRuleHits(ruleHits);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const chart = result?.chart ?? null;
+  const ruleHits = result?.hits ?? [];
+  const ruleGroups = result?.groups ?? [];
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const readNumber = (name: string, fallback: number) => {
@@ -40,46 +60,68 @@ export function BaziForm() {
       return Number.isFinite(value) ? value : fallback;
     };
 
+    const birth: BirthInput = {
+      year: readNumber("year", 1990),
+      month: readNumber("month", 1),
+      day: readNumber("day", 1),
+      hour: readNumber("hour", 12),
+      minute: readNumber("minute", 0),
+      gender: data.get("gender") === "female" ? "female" : "male",
+    };
+
+    const requestId = ++chartRequestId.current;
+    reportRequestId.current += 1;
+    setBirthInput(birth);
+    setResult(null);
+    setReport(null);
+    setReportPending(false);
+    setError(null);
+    setChartPending(true);
+
     try {
-      const result = getBaziChart({
-        year: readNumber("year", 1990),
-        month: readNumber("month", 1),
-        day: readNumber("day", 1),
-        hour: readNumber("hour", 12),
-        minute: readNumber("minute", 0),
-        gender: (data.get("gender") === "female" ? "female" : "male") as Gender,
+      const response = await fetch("/api/generate-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "chart", birth }),
       });
-      reportRequestId.current += 1;
-      setChart(result);
-      setReport(null);
-      setReportPending(false);
-      setError(null);
-    } catch (cause) {
-      reportRequestId.current += 1;
-      setChart(null);
-      setReport(null);
-      setReportPending(false);
-      setError(cause instanceof Error ? cause.message : "排盘失败，请检查输入");
+      const payload = (await response.json().catch(() => null)) as ChartResult | ApiErrorResponse | null;
+      if (requestId !== chartRequestId.current) return;
+
+      if (!response.ok || !payload || "error" in payload) {
+        setBirthInput(null);
+        setError(payload && "error" in payload ? payload.error.message : "排盘失败，请稍后再试。");
+        return;
+      }
+
+      setResult(payload);
+    } catch {
+      if (requestId !== chartRequestId.current) return;
+      setBirthInput(null);
+      setError("排盘失败，请检查网络后重试。");
+    } finally {
+      if (requestId === chartRequestId.current) setChartPending(false);
     }
   }
 
   async function handleGenerateReport() {
-    if (!chart || reportPending) return;
+    if (!birthInput || reportPending) return;
     const requestId = ++reportRequestId.current;
     setReportPending(true);
+
     try {
-      const response = await fetch("/api/report", {
+      const response = await fetch("/api/generate-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chart, hits: ruleHits }),
+        body: JSON.stringify({ action: "report", birth: birthInput }),
       });
       if (!response.ok) throw new Error("report request failed");
-      const data = (await response.json()) as { report?: BaziReport };
+
+      const payload = (await response.json()) as { report?: unknown };
       if (requestId !== reportRequestId.current) return;
-      setReport(data.report && typeof data.report.markdown === "string" ? data.report : buildQueuedReport(ruleHits));
+      setReport(isBaziReport(payload.report) ? payload.report : buildQueuedReport());
     } catch {
       if (requestId !== reportRequestId.current) return;
-      setReport(buildQueuedReport(ruleHits));
+      setReport(buildQueuedReport());
     } finally {
       if (requestId === reportRequestId.current) setReportPending(false);
     }
@@ -90,7 +132,7 @@ export function BaziForm() {
       <CardHeader className="gap-2">
         <CardTitle className="font-serif text-xl">快速排盘</CardTitle>
         <p className="text-sm leading-6 text-muted-foreground">
-          输入公历出生时间，立即得到四柱、十神、藏干、十二长生与大运，并匹配本地规则库。时间按钟表时间计算，暂未换算真太阳时。
+          输入公历出生时间，立即得到四柱、十神、藏干、十二长生与大运，并匹配知识库规则。时间按钟表时间计算，暂未换算真太阳时。
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -117,7 +159,9 @@ export function BaziForm() {
             </select>
           </Field>
           <div className="sm:col-span-2 lg:col-span-6">
-            <Button type="submit">排盘</Button>
+            <Button type="submit" disabled={chartPending}>
+              {chartPending ? "排盘中…" : "排盘"}
+            </Button>
           </div>
         </form>
 
@@ -167,20 +211,20 @@ export function BaziForm() {
                 <p className="mt-3 text-sm text-muted-foreground">当前排盘未命中知识库规则</p>
               ) : (
                 <div className="mt-3 space-y-3">
-                  {ruleGroups.map((group) => {
+                  {ruleGroups.map((group, groupIndex) => {
                     const [firstHit, ...rest] = group.hits;
                     if (!firstHit) return null;
                     if (rest.length === 0) {
-                      return <RuleHitCard key={group.conflictGroup} hit={firstHit} />;
+                      return <RuleHitCard key={`${group.label}-${groupIndex}`} hit={firstHit} />;
                     }
                     return (
                       <div
-                        key={group.conflictGroup}
+                        key={`${group.label}-${groupIndex}`}
                         className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
                       >
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                            冲突组：{CONFLICT_GROUP_LABELS[group.conflictGroup] ?? group.conflictGroup}
+                            冲突组：{group.label}
                           </span>
                           <span className="text-[11px] text-muted-foreground">{group.hits.length} 条并列</span>
                         </div>
@@ -188,8 +232,8 @@ export function BaziForm() {
                           同组规则可能给出不同判断，以下逐条展示，保留分歧，不做单一裁决。
                         </p>
                         <ul className="mt-2 space-y-2">
-                          {group.hits.map((hit) => (
-                            <li key={hit.ruleId}>
+                          {group.hits.map((hit, hitIndex) => (
+                            <li key={`${hit.name}-${hitIndex}`}>
                               <RuleHitCard hit={hit} />
                             </li>
                           ))}
@@ -236,7 +280,11 @@ export function BaziForm() {
   );
 }
 
-function buildQueuedReport(hits: readonly RuleHit[]): BaziReport {
+function isBaziReport(value: unknown): value is PublicBaziReport {
+  return typeof value === "object" && value !== null && typeof (value as { markdown?: unknown }).markdown === "string";
+}
+
+function buildQueuedReport(): PublicBaziReport {
   const markdown = `${REPORT_QUEUE_MESSAGE}\n\n${REPORT_CLOSING}`;
   return {
     provider: "unavailable",
@@ -244,8 +292,6 @@ function buildQueuedReport(hits: readonly RuleHit[]): BaziReport {
     title: REPORT_TITLE,
     markdown,
     text: markdown,
-    ruleIds: hits.map((hit) => hit.ruleId),
-    conflictGroups: [],
     safetyReplacements: [],
   };
 }
@@ -287,7 +333,7 @@ function ReportMarkdown({ markdown }: { markdown: string }) {
   );
 }
 
-function RuleHitCard({ hit }: { hit: RuleHit }) {
+function RuleHitCard({ hit }: { hit: PublicRuleHit }) {
   return (
     <div className="rounded-md border border-border/60 bg-background/50 p-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -300,8 +346,8 @@ function RuleHitCard({ hit }: { hit: RuleHit }) {
         </span>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        命理依据：{hit.source.work}
-        {hit.source.note ? ` · ${hit.source.note}` : ""}
+        命理依据：{hit.basis}
+        {hit.basisNote ? ` · ${hit.basisNote}` : ""}
       </p>
       <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
         {hit.evidence.map((item) => (

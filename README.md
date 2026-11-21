@@ -29,30 +29,38 @@ pnpm build          # 生产构建
 - M1：`src/lib/compliance.ts`：绝对化预测 / 恐吓 / 付费改运 / 越界专业建议的词表扫描，后续用于校验 LLM 报告
 - M2：`src/lib/engines/bazi.ts`：基于 lunar-javascript 的确定性排盘（四柱、十神、藏干、十二长生、五行统计、大运与起运），显式记录子时流派与节气分界
 - M2：`src/lib/schemas/chart-facts.ts`：zod 入参 / 出参 Schema，拦截干支拼接、五行合计、大运跨度等结构性错误
-- M2：`POST /api/bazi/chart`：服务端排盘接口，返回完整 `ChartFacts` JSON
+- M2：`POST /api/generate-report`（`action=chart`）：服务端排盘，返回 `ChartFacts`；排盘引擎不会进入前端包
 - M2：`data/cases/golden/bazi/`：3 个黄金案例（普通、立春交界、23 点子时），Vitest 全量快照回归
-- M2：首页「快速排盘」表单，客户端直接调用排盘引擎并展示四柱与原始 JSON
+- M2：首页「快速排盘」表单只提交出生信息，由服务端返回四柱与展示用结论
 - M3：`src/lib/schemas/rule-card.ts`：规则卡 Schema（编号、流派、来源、条件、结论、冲突组、置信度），条件 DSL 覆盖同党占比、日主通根、月令关系、五行缺失、十神透干与十神组合、六冲、三合、天干五合、三刑/子卯刑/自刑、六害与暗合
 - M3：`data/rules/bazi/`：30 条基础规则（旺衰、十神组合、五行、刑冲合害，子平与盲派并存）
 - M3：`src/lib/engines/rules.ts`：确定性 `evaluateRules()` 输出命中规则与可追溯证据；`groupRuleHits()` 按冲突组聚合，同组多条并列、不合并裁决
 - M3：首页四柱改为横向网格，每柱列出天干十神与地支藏干；「命理分析（规则命中）」按冲突组分列展示流派与置信度，无命中时显示「当前排盘未命中知识库规则」
 - M4：`src/lib/llm/gateway.ts`：宗师视角 System Prompt（子平格局 + 盲派象法 + 荣格分析心理学），按「原局剖析 / 岁运推演 / 宗师寄语」三篇 Markdown 输出，只读取 `ChartFacts` 与 `RuleHit[]`
-- M4：`POST /api/report`：服务端调用 SiliconFlow / OpenAI 兼容接口；缺少配置或调用失败时统一返回「AI 正在排队中，请稍后再试」，不向前端暴露任何底层错误
+- M4：`POST /api/generate-report`（`action=report`）：服务端完成排盘、规则匹配并调用 SiliconFlow / OpenAI 兼容接口；缺少配置或调用失败时统一返回「AI 正在排队中，请稍后再试」，不向前端暴露任何底层错误
 - M4：报告安全过滤：命中「必定、注定、破财、改运、必死」等合规词表时自动替换为「可能、注意、建议」口径，结尾固定附上免责原句
 - M4：首页结果区底部「AI 智能解读报告」区块，点击「生成报告」调用真实模型并展示三篇 Markdown 解读
 
-## API：确定性排盘
+## API：排盘与报告
+
+前端只发送出生信息，规则库、排盘引擎与 System Prompt 全部留在服务端：
 
 ```bash
-curl -X POST http://localhost:3000/api/bazi/chart \
+# 排盘 + 规则命中（不含规则原文）
+curl -X POST http://localhost:3000/api/generate-report \
   -H "Content-Type: application/json" \
-  -d '{"year":1990,"month":1,"day":1,"hour":12,"minute":0,"gender":"male"}'
+  -d '{"action":"chart","birth":{"year":1990,"month":1,"day":1,"hour":12,"minute":0,"gender":"male"}}'
+
+# 生成三篇报告（服务端重新排盘并调用 LLM）
+curl -X POST http://localhost:3000/api/generate-report \
+  -H "Content-Type: application/json" \
+  -d '{"action":"report","birth":{"year":1990,"month":1,"day":1,"hour":12,"minute":0,"gender":"male"}}'
 ```
 
-- 必填：`year` 1900–2100、`month` 1–12、`day` 1–31、`hour` 0–23、`minute` 0–59、`gender`（`male` / `female`）
-- 可选：`sect`（1 = 晚子时 23:00 换日，默认；2 = 晚子时归当日）
-- 成功：200，返回 `ChartFacts`（四柱、十神、藏干、十二长生、五行统计、大运、起运、口径说明）
-- 失败：400，`{ "error": { "code": "INVALID_JSON" | "INVALID_INPUT" | "CHART_FAILED", "message": "...", "issues"?: [...] } }`
+- 必填：`action`（`chart` / `report`）、`birth.year` 1900–2100、`birth.month` 1–12、`birth.day` 1–31、`birth.hour` 0–23、`birth.minute` 0–59、`birth.gender`（`male` / `female`）
+- 可选：`birth.sect`（1 = 晚子时 23:00 换日，默认；2 = 晚子时归当日）
+- 成功：200，返回 `chart`、`hits`、`groups`（以及报告模式下的 `report`）；不返回规则编号、判定条件、规则 JSON 或 System Prompt
+- 失败：400，`{ "error": { "code": "INVALID_JSON" | "INVALID_BIRTH" | "CHART_FAILED", "message": "..." } }`
 
 ## 架构边界（硬约束）
 
@@ -62,17 +70,18 @@ curl -X POST http://localhost:3000/api/bazi/chart \
 4. 多派结论并列展示，不合并为单一结论。
 5. 不做绝对化预测、恐吓、付费改运，不提供医疗/法律/投资/婚姻建议。
 6. 知识库未收录的主题显示「知识库未覆盖」，禁止编造。
+7. 安全隔离：规则库、排盘引擎与 System Prompt 只在服务端运行；前端仅提交出生信息，接口只返回排盘事实与展示用结论。
 
 ## 目录
 
 ```text
 src/
-  app/             # App Router 页面与 /api/bazi/chart
-  components/      # 站点组件 + ui 原子组件
+  app/             # App Router 页面与 /api/generate-report 服务端接口
+  components/      # 站点组件 + ui 原子组件（不引用规则库与 Prompt）
   lib/
-    engines/       # 确定性排盘引擎与规则执行器
-    llm/           # 本地模板报告网关（mock provider）
-    rules/         # 规则库加载与校验
+    engines/       # 确定性排盘引擎与规则执行器（仅服务端）
+    llm/           # 服务端报告网关与宗师 Prompt（不进入前端包）
+    rules/         # 规则库加载与校验（仅服务端）
     schemas/       # zod 入参 / 出参 Schema
 data/cases/golden/ # 黄金命例快照
 data/rules/bazi/   # 八字规则卡 JSON

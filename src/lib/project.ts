@@ -17,7 +17,7 @@ export const MILESTONES: readonly Milestone[] = [
   {
     id: "M2",
     title: "确定性八字排盘引擎",
-    summary: "四柱、十神、藏干、十二长生、五行统计、大运与起运；zod 全量校验、黄金案例回归、POST /api/bazi/chart。",
+    summary: "四柱、十神、藏干、十二长生、五行统计、大运与起运；zod 全量校验、黄金案例回归，由服务端 POST /api/generate-report 统一返回。",
     status: "done",
   },
   {

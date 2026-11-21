@@ -83,6 +83,30 @@ test.describe("规则命中面板", () => {
     await expect(page.getByText("天干透七杀")).toBeVisible();
   });
 
+  test("排盘接口只接收出生信息且不返回规则原文", async ({ page }) => {
+    await page.goto("/");
+
+    const responsePromise = page.waitForResponse((response) => {
+      if (!response.url().includes("/api/generate-report")) return false;
+      const body = response.request().postDataJSON() as { action?: string } | null;
+      return body?.action === "chart";
+    });
+
+    await page.getByRole("button", { name: "排盘" }).click();
+    const response = await responsePromise;
+    const requestBody = response.request().postDataJSON() as { action: string; birth: Record<string, unknown> };
+
+    expect(Object.keys(requestBody).sort()).toEqual(["action", "birth"]);
+    expect(requestBody.birth).toEqual({ year: 1990, month: 1, day: 1, hour: 12, minute: 0, gender: "male" });
+
+    const payload = await response.json();
+    const serialized = JSON.stringify(payload);
+    expect(serialized).not.toContain("ruleId");
+    expect(serialized).not.toContain("conflictGroup");
+    expect(serialized).not.toContain("REPORT_SYSTEM_PROMPT");
+    expect(serialized).not.toContain("bazi.");
+  });
+
   test("生成 AI 智能解读报告且不含绝对化用语", async ({ page }) => {
     const closing = "命理仅为参考，人生在于个人选择。本内容由 AI 提供，仅供传统文化学习与娱乐参考。";
     const markdown = [
@@ -103,8 +127,13 @@ test.describe("规则命中面板", () => {
       closing,
     ].join("\n\n");
 
-    await page.route("**/api/report", (route) =>
-      route.fulfill({
+    await page.route("**/api/generate-report", async (route) => {
+      const body = route.request().postDataJSON() as { action?: string } | null;
+      if (body?.action !== "report") {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
@@ -114,13 +143,11 @@ test.describe("规则命中面板", () => {
             title: "八字结构解读报告",
             markdown,
             text: markdown,
-            ruleIds: [],
-            conflictGroups: [],
             safetyReplacements: [],
           },
         }),
-      }),
-    );
+      });
+    });
 
     await page.goto("/");
 
@@ -145,9 +172,14 @@ test.describe("规则命中面板", () => {
   });
 
   test("AI 接口异常时只展示排队提示", async ({ page }) => {
-    await page.route("**/api/report", (route) =>
-      route.fulfill({ status: 500, contentType: "text/plain", body: "internal stack trace" }),
-    );
+    await page.route("**/api/generate-report", async (route) => {
+      const body = route.request().postDataJSON() as { action?: string } | null;
+      if (body?.action !== "report") {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({ status: 500, contentType: "text/plain", body: "internal stack trace" });
+    });
 
     await page.goto("/");
     await page.getByRole("button", { name: "排盘" }).click();
