@@ -1,0 +1,40 @@
+{
+  "name": "yixue-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "易学学习工具：确定性排盘 + 规则卡 + 可追溯解释报告",
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "1.77.0",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwind-merge": "^3.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "4.3.5",
+    "typescript": "5.9.3",
+    "vitest": "5.1.1"
+  }
+}
