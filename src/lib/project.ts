@@ -29,7 +29,8 @@ export const MILESTONES: readonly Milestone[] = [
   {
     id: "M4",
     title: "LLM 解释网关",
-    summary: "已完成本地模板 mock 报告：读取排盘事实与命中规则，输出约 300 字解读并过滤绝对化用语；真实外部模型待接。",
+    summary:
+      "宗师视角 System Prompt（子平、盲派、荣格心理学）与「原局剖析 / 岁运推演 / 宗师寄语」三篇 Markdown 报告，沿用本地模板 mock；真实外部模型待接。",
     status: "in_progress",
   },
   {

@@ -89,11 +89,16 @@ test.describe("规则命中面板", () => {
 
     const report = page.locator("#ai-report");
     await expect(report.getByRole("heading", { name: "AI 智能解读报告" })).toBeVisible();
+    await expect(report.getByRole("heading", { name: "第一篇：原局剖析·生命蓝图与性格底色" })).toBeVisible();
+    await expect(report.getByRole("heading", { name: "第二篇：岁运推演·时空环境与吉凶触发" })).toBeVisible();
+    await expect(report.getByRole("heading", { name: "第三篇：宗师寄语" })).toBeVisible();
     await expect(report).toContainText("日主为丙火");
-    await expect(report).toContainText("本报告由本地模板引擎生成");
+    await expect(report).toContainText(
+      "命理仅为参考，人生在于个人选择。本内容由 AI 提供，仅供传统文化学习与娱乐参考。",
+    );
 
     const text = await report.innerText();
-    for (const word of ["必定", "注定", "破财", "改运"]) {
+    for (const word of ["必定", "注定", "破财", "改运", "必死"]) {
       expect(text).not.toContain(word);
     }
   });

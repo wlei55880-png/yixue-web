@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBaziChart } from "@/lib/engines/bazi";
 import { evaluateRules, groupRuleHits } from "@/lib/engines/rules";
-import { generateBaziReport, REPORT_DISCLAIMER, type BaziReport } from "@/lib/llm/gateway";
+import { generateBaziReport, REPORT_CLOSING, type BaziReport } from "@/lib/llm/gateway";
 import { BAZI_RULES, CONFLICT_GROUP_LABELS } from "@/lib/rules/bazi";
 import type { ChartFacts, Gender, PillarKey } from "@/lib/schemas/chart-facts";
 import type { RuleConfidence, RuleHit } from "@/lib/schemas/rule-card";
@@ -186,7 +186,7 @@ export function BaziForm() {
                 <div className="space-y-1">
                   <h3 className="font-serif text-lg">AI 智能解读报告</h3>
                   <p className="text-xs leading-6 text-muted-foreground">
-                    由本地模板引擎基于排盘事实与命中规则生成，暂不调用外部模型。
+                    宗师视角：子平格局 + 盲派象法 + 荣格心理，三篇结构。由本地模板引擎基于排盘事实与命中规则生成，暂不调用外部模型。
                   </p>
                 </div>
                 {report ? (
@@ -197,19 +197,7 @@ export function BaziForm() {
               </div>
               {report ? (
                 <div aria-live="polite" className="mt-4 space-y-3">
-                  {report.paragraphs
-                    .filter((paragraph) => paragraph !== REPORT_DISCLAIMER)
-                    .map((paragraph) => (
-                      <p
-                        key={`${paragraph.slice(0, 16)}-${paragraph.length}`}
-                        className="indent-8 font-serif text-[15px] leading-8 text-foreground/90 sm:text-base"
-                      >
-                        {paragraph}
-                      </p>
-                    ))}
-                  <p className="border-t border-border/60 pt-3 text-xs leading-6 text-muted-foreground">
-                    {REPORT_DISCLAIMER}
-                  </p>
+                  <ReportMarkdown markdown={report.markdown} />
                   <p className="text-[11px] text-muted-foreground/80">
                     引用规则 {report.ruleIds.length} 条 · 生成方式：本地模板（{report.model}）
                   </p>
@@ -229,6 +217,43 @@ export function BaziForm() {
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+function ReportMarkdown({ markdown }: { markdown: string }) {
+  return (
+    <>
+      {markdown.split("\n").map((line, index) => {
+        const key = `${index}-${line.slice(0, 12)}`;
+        if (line.startsWith("# ")) {
+          return (
+            <h4 key={key} className="border-b border-primary/20 pb-2 pt-3 font-serif text-xl tracking-wide">
+              {line.slice(2)}
+            </h4>
+          );
+        }
+        if (line.startsWith("## ")) {
+          return (
+            <h5 key={key} className="pt-1 font-serif text-base">
+              {line.slice(3)}
+            </h5>
+          );
+        }
+        if (line === REPORT_CLOSING) {
+          return (
+            <p key={key} className="border-t border-border/60 pt-3 text-xs leading-6 text-muted-foreground">
+              {line}
+            </p>
+          );
+        }
+        if (line.trim() === "") return null;
+        return (
+          <p key={key} className="indent-8 font-serif text-[15px] leading-8 text-foreground/90 sm:text-base">
+            {line}
+          </p>
+        );
+      })}
+    </>
   );
 }
 

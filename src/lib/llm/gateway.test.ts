@@ -5,52 +5,79 @@ import { getBaziChart } from "@/lib/engines/bazi";
 import { evaluateRules } from "@/lib/engines/rules";
 import { BAZI_RULES } from "@/lib/rules/bazi";
 
-import { generateBaziReport, REPORT_DISCLAIMER, sanitizeReportText } from "./gateway";
+import { generateBaziReport, REPORT_CLOSING, REPORT_SYSTEM_PROMPT, sanitizeReportText } from "./gateway";
 
 const chart = getBaziChart({ year: 1990, month: 1, day: 1, hour: 12, minute: 0, gender: "male" });
 const hits = evaluateRules(chart, BAZI_RULES);
-const report = generateBaziReport({ chart, hits });
+const report = generateBaziReport({ chart, hits, currentYear: 2026 });
+
+const FORBIDDEN_WORDS = ["必定", "注定", "破财", "改运", "必死"] as const;
 
 describe("generateBaziReport（本地 mock）", () => {
-  it("引用排盘事实与命中规则", () => {
+  it("按三篇结构输出 Markdown，并引用排盘事实", () => {
     expect(report.provider).toBe("mock");
-    expect(report.text).toContain("日主为丙火");
-    expect(report.text).toContain("四柱为「己巳 丙子 丙寅 甲午」");
-    expect(report.text).toContain("地支子午冲");
+    expect(report.markdown).toContain("# 第一篇：原局剖析·生命蓝图与性格底色");
+    expect(report.markdown).toContain("## 1. 能量格局与人生主线");
+    expect(report.markdown).toContain("## 2. 宫位与心理图景");
+    expect(report.markdown).toContain("## 3. 关系课题与暗藏伏笔");
+    expect(report.markdown).toContain("# 第二篇：岁运推演·时空环境与吉凶触发");
+    expect(report.markdown).toContain("## 1. 当前大运基调");
+    expect(report.markdown).toContain("## 2. 流年震荡与破局点");
+    expect(report.markdown).toContain("# 第三篇：宗师寄语");
+    expect(report.markdown).toContain("日主为丙火");
+    expect(report.markdown).toContain("四柱为「己巳 丙子 丙寅 甲午」");
+    expect(report.markdown).toContain("地支子午冲");
+    expect(report.markdown.endsWith(REPORT_CLOSING)).toBe(true);
     expect(report.ruleIds).toEqual(hits.map((hit) => hit.ruleId));
-    expect(report.text).toContain(REPORT_DISCLAIMER);
   });
 
   it("相同输入输出完全一致", () => {
-    const again = generateBaziReport({ chart, hits });
-    expect(again.text).toBe(report.text);
+    const again = generateBaziReport({ chart, hits, currentYear: 2026 });
+    expect(again.markdown).toBe(report.markdown);
     expect(again.safetyReplacements).toEqual(report.safetyReplacements);
   });
 
-  it("报告长度在约 300 字的合理区间", () => {
-    expect(report.text.length).toBeGreaterThan(250);
-    expect(report.text.length).toBeLessThan(800);
+  it("三篇报告长度在合理区间", () => {
+    expect(report.markdown.length).toBeGreaterThan(1200);
+    expect(report.markdown.length).toBeLessThan(8000);
   });
 
   it("输出通过合规词表扫描", () => {
-    expect(scanCompliance(report.text)).toEqual([]);
-    for (const word of ["必定", "注定", "破财", "改运"]) {
-      expect(report.text).not.toContain(word);
+    expect(scanCompliance(report.markdown)).toEqual([]);
+    for (const word of FORBIDDEN_WORDS) {
+      expect(report.markdown).not.toContain(word);
     }
   });
 
   it("冲突组在报告中并列提示，不做单一裁决", () => {
     const officerChart = getBaziChart({ year: 1970, month: 1, day: 1, hour: 18, minute: 30, gender: "male" });
-    const officerReport = generateBaziReport({ chart: officerChart, hits: evaluateRules(officerChart, BAZI_RULES) });
+    const officerReport = generateBaziReport({
+      chart: officerChart,
+      hits: evaluateRules(officerChart, BAZI_RULES),
+      currentYear: 2026,
+    });
     expect(officerReport.conflictGroups).toContain("ten-god.officer-mix");
-    expect(officerReport.text).toContain("官杀同透");
-    expect(officerReport.text).toContain("保留分歧");
+    expect(officerReport.markdown).toContain("官杀同透");
+    expect(officerReport.markdown).toContain("保留分歧");
   });
 
   it("无命中时明确说明知识库边界", () => {
     const emptyChart = getBaziChart({ year: 1962, month: 2, day: 9, hour: 18, minute: 30, gender: "male" });
-    const emptyReport = generateBaziReport({ chart: emptyChart, hits: [] });
-    expect(emptyReport.paragraphs.join("")).toContain("未命中当前知识库");
+    const emptyReport = generateBaziReport({ chart: emptyChart, hits: [], currentYear: 2026 });
+    expect(emptyReport.markdown).toContain("未命中当前知识库");
+    expect(emptyReport.markdown.endsWith(REPORT_CLOSING)).toBe(true);
+  });
+});
+
+describe("REPORT_SYSTEM_PROMPT", () => {
+  it("包含宗师角色、三篇结构与硬拦截要求", () => {
+    expect(REPORT_SYSTEM_PROMPT).toContain("宗师");
+    expect(REPORT_SYSTEM_PROMPT).toContain("荣格");
+    expect(REPORT_SYSTEM_PROMPT).toContain("# 第一篇：原局剖析·生命蓝图与性格底色");
+    expect(REPORT_SYSTEM_PROMPT).toContain("# 第二篇：岁运推演·时空环境与吉凶触发");
+    expect(REPORT_SYSTEM_PROMPT).toContain("# 第三篇：宗师寄语");
+    expect(REPORT_SYSTEM_PROMPT).toContain("严禁出现“必定、注定、改运、必死、破财”");
+    expect(REPORT_SYSTEM_PROMPT).toContain(REPORT_CLOSING);
   });
 });
 
@@ -62,9 +89,14 @@ describe("sanitizeReportText", () => {
     expect(result.text).toContain("建议");
     expect(scanCompliance(result.text)).toEqual([]);
     expect(result.replacements.length).toBeGreaterThan(0);
-    for (const word of ["必定", "注定", "破财", "改运"]) {
+    for (const word of FORBIDDEN_WORDS) {
       expect(result.text).not.toContain(word);
     }
+  });
+
+  it("单独拦截「必死」", () => {
+    const result = sanitizeReportText("此局必死");
+    expect(result.text).toBe("此局需要重视健康");
   });
 
   it("长词优先替换，避免半截残留", () => {
