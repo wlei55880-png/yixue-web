@@ -22,12 +22,13 @@ pnpm test:e2e       # Playwright（首次需 pnpm exec playwright install chromi
 pnpm build          # 生产构建
 ```
 
-## 已实现（M1）
+## 已实现
 
-- Next.js 16 App Router + TypeScript + Tailwind CSS v4 + shadcn/ui 风格组件（本地 vendored）
-- 首页：V1 闭环说明、产品边界、里程碑路线、免责声明
-- `src/lib/compliance.ts`：绝对化预测 / 恐吓 / 付费改运 / 越界专业建议的词表扫描，后续用于校验 LLM 报告
-- Vitest 单测、Playwright 桌面与移动端冒烟、ESLint 与类型检查
+- M1：Next.js 16 App Router + TypeScript + Tailwind CSS v4 + shadcn/ui 风格组件（本地 vendored）
+- M1：首页：V1 闭环说明、产品边界、里程碑路线、免责声明
+- M1：`src/lib/compliance.ts`：绝对化预测 / 恐吓 / 付费改运 / 越界专业建议的词表扫描，后续用于校验 LLM 报告
+- M2：`src/lib/engines/bazi.ts`：基于 lunar-javascript 的确定性排盘（四柱、十神、藏干），显式记录子时流派与节气分界
+- M2：首页「快速排盘」表单，客户端直接调用排盘引擎并展示四柱与原始 JSON（暂无黄金命例测试与 API）
 
 ## 架构边界（硬约束）
 

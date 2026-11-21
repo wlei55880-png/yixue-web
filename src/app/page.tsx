@@ -1,6 +1,7 @@
 import { ArrowRight, BookOpen, Check, Compass, ScrollText, ShieldCheck } from "lucide-react";
 
 import { DisclaimerBanner } from "@/components/disclaimer-banner";
+import { BaziForm } from "@/components/bazi-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,9 @@ export default function HomePage() {
             </div>
           </div>
           <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex" aria-label="页面导航">
+            <a className="transition-colors hover:text-foreground" href="#paipan">
+              快速排盘
+            </a>
             <a className="transition-colors hover:text-foreground" href="#flow">
               闭环流程
             </a>
@@ -113,6 +117,17 @@ export default function HomePage() {
               })}
             </CardContent>
           </Card>
+        </section>
+
+        <section id="paipan" className="scroll-mt-24 border-t border-border/70 py-16">
+          <SectionHeading
+            eyebrow="QUICK CHART"
+            title="四柱试排"
+            description="填写公历出生时间，调用排盘引擎得到四柱、十神与藏干。当前为 M2 第一步，仅做确定性排盘，不含规则卡与解释。"
+          />
+          <div className="mt-8">
+            <BaziForm />
+          </div>
         </section>
 
         <section id="flow" className="scroll-mt-24 border-t border-border/70 py-16">

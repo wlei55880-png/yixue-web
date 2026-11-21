@@ -17,8 +17,8 @@ export const MILESTONES: readonly Milestone[] = [
   {
     id: "M2",
     title: "确定性八字排盘引擎",
-    summary: "基于 lunar-javascript 封装四柱、十神、藏干、大运等结构化事实，附已知命例回归测试。",
-    status: "planned",
+    summary: "基于 lunar-javascript 封装四柱、十神、藏干等结构化事实；命例回归测试待补。",
+    status: "in_progress",
   },
   {
     id: "M3",
