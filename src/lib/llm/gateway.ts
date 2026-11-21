@@ -154,7 +154,7 @@ export function generateBaziReport({ chart, hits }: ReportRequest): BaziReport {
     if (conflictGroups.length > 0) {
       const conflictLines = conflictGroups.slice(0, 2).map((group) => {
         const label = CONFLICT_GROUP_LABELS[group.conflictGroup] ?? group.conflictGroup;
-        const schools = group.hits.map((hit) => hit.school).join("、");
+        const schools = [...new Set(group.hits.map((hit) => hit.school))].join("、");
         return `在「${label}」上，${schools} 给出并列判断，本报告保留分歧，不做单一裁决。`;
       });
       paragraphs.push(conflictLines.join(""));
