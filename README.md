@@ -36,9 +36,10 @@ pnpm build          # 生产构建
 - M3：`data/rules/bazi/`：30 条基础规则（旺衰、十神组合、五行、刑冲合害，子平与盲派并存）
 - M3：`src/lib/engines/rules.ts`：确定性 `evaluateRules()` 输出命中规则与可追溯证据；`groupRuleHits()` 按冲突组聚合，同组多条并列、不合并裁决
 - M3：首页四柱改为横向网格，每柱列出天干十神与地支藏干；「命理分析（规则命中）」按冲突组分列展示流派与置信度，无命中时显示「当前排盘未命中知识库规则」
-- M4：`src/lib/llm/gateway.ts`：宗师视角 System Prompt（子平格局 + 盲派象法 + 荣格分析心理学），本地模板 mock 按「原局剖析 / 岁运推演 / 宗师寄语」三篇 Markdown 输出，只读取 `ChartFacts` 与 `RuleHit[]`
+- M4：`src/lib/llm/gateway.ts`：宗师视角 System Prompt（子平格局 + 盲派象法 + 荣格分析心理学），按「原局剖析 / 岁运推演 / 宗师寄语」三篇 Markdown 输出，只读取 `ChartFacts` 与 `RuleHit[]`
+- M4：`POST /api/report`：服务端调用 SiliconFlow / OpenAI 兼容接口；缺少配置或调用失败时统一返回「AI 正在排队中，请稍后再试」，不向前端暴露任何底层错误
 - M4：报告安全过滤：命中「必定、注定、破财、改运、必死」等合规词表时自动替换为「可能、注意、建议」口径，结尾固定附上免责原句
-- M4：首页底部「AI 智能解读报告」区块，点击「生成报告」即时展示带篇章标题的 Markdown 解读
+- M4：首页结果区底部「AI 智能解读报告」区块，点击「生成报告」调用真实模型并展示三篇 Markdown 解读
 
 ## API：确定性排盘
 
@@ -80,4 +81,6 @@ e2e/               # Playwright 用例
 
 ## 环境变量
 
-复制 `.env.example` 为 `.env`。数据库（M5）与 LLM 网关（M4）按里程碑逐步启用；未配置 LLM Key 时使用 mock provider。
+复制 `.env.example` 为 `.env.local`，填入 `LLM_PROVIDER`、`LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`。服务端通过 `POST /api/report` 调用 OpenAI 兼容接口；缺少配置或调用失败时统一显示「AI 正在排队中，请稍后再试」。部署到 Vercel 时需在 Project Settings → Environment Variables 中配置同名变量（`.env.local` 不会进入仓库）。
+
+E2E 使用生产构建启动 3100 端口，运行前先执行 `pnpm build`，再执行 `pnpm test:e2e`。

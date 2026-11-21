@@ -5,7 +5,7 @@ import { getBaziChart } from "@/lib/engines/bazi";
 import { evaluateRules } from "@/lib/engines/rules";
 import { BAZI_RULES } from "@/lib/rules/bazi";
 
-import { generateBaziReport, REPORT_CLOSING, REPORT_SYSTEM_PROMPT, sanitizeReportText } from "./gateway";
+import { buildQueuedReport, generateBaziReport, REPORT_CLOSING, REPORT_SYSTEM_PROMPT, sanitizeReportText } from "./gateway";
 
 const chart = getBaziChart({ year: 1990, month: 1, day: 1, hour: 12, minute: 0, gender: "male" });
 const hits = evaluateRules(chart, BAZI_RULES);
@@ -78,6 +78,17 @@ describe("REPORT_SYSTEM_PROMPT", () => {
     expect(REPORT_SYSTEM_PROMPT).toContain("# 第三篇：宗师寄语");
     expect(REPORT_SYSTEM_PROMPT).toContain("严禁出现“必定、注定、改运、必死、破财”");
     expect(REPORT_SYSTEM_PROMPT).toContain(REPORT_CLOSING);
+  });
+});
+
+describe("buildQueuedReport", () => {
+  it("统一返回排队提示与免责声明，不泄露底层信息", () => {
+    const queued = buildQueuedReport({ hits });
+    expect(queued.provider).toBe("unavailable");
+    expect(queued.markdown).toContain("AI 正在排队中，请稍后再试。");
+    expect(queued.markdown).toContain(REPORT_CLOSING);
+    expect(queued.markdown).not.toMatch(/401|500|stack|siliconflow/i);
+    expect(queued.ruleIds).toEqual(hits.map((hit) => hit.ruleId));
   });
 });
 

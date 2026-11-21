@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBaziChart } from "@/lib/engines/bazi";
 import { evaluateRules, groupRuleHits } from "@/lib/engines/rules";
-import { generateBaziReport, REPORT_CLOSING, type BaziReport } from "@/lib/llm/gateway";
+import { REPORT_CLOSING, REPORT_QUEUE_MESSAGE, REPORT_TITLE, type BaziReport } from "@/lib/llm/report-types";
 import { BAZI_RULES, CONFLICT_GROUP_LABELS } from "@/lib/rules/bazi";
 import type { ChartFacts, Gender, PillarKey } from "@/lib/schemas/chart-facts";
 import type { RuleConfidence, RuleHit } from "@/lib/schemas/rule-card";
@@ -26,6 +26,8 @@ export function BaziForm() {
   const [chart, setChart] = React.useState<ChartFacts | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [report, setReport] = React.useState<BaziReport | null>(null);
+  const [reportPending, setReportPending] = React.useState(false);
+  const reportRequestId = React.useRef(0);
   const ruleHits = chart ? evaluateRules(chart, BAZI_RULES) : [];
   const ruleGroups = groupRuleHits(ruleHits);
 
@@ -47,19 +49,40 @@ export function BaziForm() {
         minute: readNumber("minute", 0),
         gender: (data.get("gender") === "female" ? "female" : "male") as Gender,
       });
+      reportRequestId.current += 1;
       setChart(result);
       setReport(null);
+      setReportPending(false);
       setError(null);
     } catch (cause) {
+      reportRequestId.current += 1;
       setChart(null);
       setReport(null);
+      setReportPending(false);
       setError(cause instanceof Error ? cause.message : "排盘失败，请检查输入");
     }
   }
 
-  function handleGenerateReport() {
-    if (!chart) return;
-    setReport(generateBaziReport({ chart, hits: ruleHits }));
+  async function handleGenerateReport() {
+    if (!chart || reportPending) return;
+    const requestId = ++reportRequestId.current;
+    setReportPending(true);
+    try {
+      const response = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart, hits: ruleHits }),
+      });
+      if (!response.ok) throw new Error("report request failed");
+      const data = (await response.json()) as { report?: BaziReport };
+      if (requestId !== reportRequestId.current) return;
+      setReport(data.report && typeof data.report.markdown === "string" ? data.report : buildQueuedReport(ruleHits));
+    } catch {
+      if (requestId !== reportRequestId.current) return;
+      setReport(buildQueuedReport(ruleHits));
+    } finally {
+      if (requestId === reportRequestId.current) setReportPending(false);
+    }
   }
 
   return (
@@ -177,38 +200,31 @@ export function BaziForm() {
                 </div>
               )}
             </div>
-            <details className="rounded-lg border border-border/70 bg-background/60 p-4 text-sm">
-              <summary className="cursor-pointer text-muted-foreground">查看排盘 JSON</summary>
-              <pre className="mt-3 overflow-x-auto text-xs leading-5">{JSON.stringify(chart, null, 2)}</pre>
-            </details>
             <div id="ai-report" className="rounded-lg border border-primary/25 bg-primary/[0.03] p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
                   <h3 className="font-serif text-lg">AI 智能解读报告</h3>
                   <p className="text-xs leading-6 text-muted-foreground">
-                    宗师视角：子平格局 + 盲派象法 + 荣格心理，三篇结构。由本地模板引擎基于排盘事实与命中规则生成，暂不调用外部模型。
+                    融合子平格局、盲派象法与荣格心理学，按三篇结构展开：原局剖析、岁运推演、宗师寄语。
                   </p>
                 </div>
                 {report ? (
-                  <Button type="button" variant="outline" size="sm" onClick={handleGenerateReport}>
-                    重新生成
+                  <Button type="button" variant="outline" size="sm" onClick={handleGenerateReport} disabled={reportPending}>
+                    {reportPending ? "推演中…" : "重新生成"}
                   </Button>
                 ) : null}
               </div>
               {report ? (
                 <div aria-live="polite" className="mt-4 space-y-3">
                   <ReportMarkdown markdown={report.markdown} />
-                  <p className="text-[11px] text-muted-foreground/80">
-                    引用规则 {report.ruleIds.length} 条 · 生成方式：本地模板（{report.model}）
-                  </p>
                 </div>
               ) : (
                 <div className="mt-4 space-y-3">
-                  <Button type="button" onClick={handleGenerateReport}>
-                    生成报告
+                  <Button type="button" onClick={handleGenerateReport} disabled={reportPending}>
+                    {reportPending ? "正在推演…" : "生成报告"}
                   </Button>
                   <p className="text-xs leading-6 text-muted-foreground">
-                    报告会引用上方命中的规则编号，冲突处并列保留，不给出绝对化结论。
+                    报告会结合上方命理分析，冲突处并列保留，不给出绝对化结论。
                   </p>
                 </div>
               )}
@@ -218,6 +234,20 @@ export function BaziForm() {
       </CardContent>
     </Card>
   );
+}
+
+function buildQueuedReport(hits: readonly RuleHit[]): BaziReport {
+  const markdown = `${REPORT_QUEUE_MESSAGE}\n\n${REPORT_CLOSING}`;
+  return {
+    provider: "unavailable",
+    model: "llm",
+    title: REPORT_TITLE,
+    markdown,
+    text: markdown,
+    ruleIds: hits.map((hit) => hit.ruleId),
+    conflictGroups: [],
+    safetyReplacements: [],
+  };
 }
 
 function ReportMarkdown({ markdown }: { markdown: string }) {
@@ -270,7 +300,7 @@ function RuleHitCard({ hit }: { hit: RuleHit }) {
         </span>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        来源：{hit.source.work}
+        命理依据：{hit.source.work}
         {hit.source.note ? ` · ${hit.source.note}` : ""}
       </p>
       <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
@@ -278,7 +308,6 @@ function RuleHitCard({ hit }: { hit: RuleHit }) {
           <li key={item}>{item}</li>
         ))}
       </ul>
-      <p className="mt-2 text-[11px] text-muted-foreground/80">规则编号：{hit.ruleId}</p>
     </div>
   );
 }

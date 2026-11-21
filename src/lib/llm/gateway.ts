@@ -1,33 +1,20 @@
 import { COMPLIANCE_RULES, scanCompliance, type ComplianceCategory } from "@/lib/compliance";
 import { ELEMENT_CONTROLS, ELEMENT_GENERATES, ganElement, zhiElement } from "@/lib/domain/wuxing";
 import { groupRuleHits } from "@/lib/engines/rules";
+import {
+  REPORT_CLOSING,
+  REPORT_QUEUE_MESSAGE,
+  REPORT_TITLE,
+  type BaziReport,
+  type ReportRequest,
+  type SafetyReplacement,
+} from "@/lib/llm/report-types";
 import { CONFLICT_GROUP_LABELS } from "@/lib/rules/bazi";
 import { GAN_VALUES, ZHI_VALUES, type ChartFacts, type Element, type PillarKey } from "@/lib/schemas/chart-facts";
 import type { RuleConfidence, RuleHit } from "@/lib/schemas/rule-card";
 
-export interface ReportRequest {
-  chart: ChartFacts;
-  hits: readonly RuleHit[];
-  /** 用于岁运推演，默认取当前年份；测试可传入固定年份。 */
-  currentYear?: number;
-}
-
-export interface SafetyReplacement {
-  from: string;
-  to: string;
-  count: number;
-}
-
-export interface BaziReport {
-  provider: "mock";
-  model: string;
-  title: string;
-  markdown: string;
-  text: string;
-  ruleIds: string[];
-  conflictGroups: string[];
-  safetyReplacements: SafetyReplacement[];
-}
+export { REPORT_CLOSING, REPORT_QUEUE_MESSAGE } from "@/lib/llm/report-types";
+export type { BaziReport, ReportRequest, SafetyReplacement } from "@/lib/llm/report-types";
 
 /**
  * 报告 System Prompt：供未来真实 LLM 网关直接复用。
@@ -63,9 +50,6 @@ export const REPORT_SYSTEM_PROMPT = `你是一位融合传统子平八字、盲�
 2. 不得给出医疗、法律、投资、婚姻的具体决策建议，只能建议咨询对应领域专业人士。
 3. 结尾必须原样附上：“命理仅为参考，人生在于个人选择。本内容由 AI 提供，仅供传统文化学习与娱乐参考。”`;
 
-export const REPORT_CLOSING = "命理仅为参考，人生在于个人选择。本内容由 AI 提供，仅供传统文化学习与娱乐参考。";
-
-const REPORT_TITLE = "八字结构解读报告";
 const REPORT_MODEL = "local-template-v2";
 
 const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
@@ -441,4 +425,109 @@ export function generateBaziReport({ chart, hits, currentYear }: ReportRequest):
     conflictGroups: conflictGroups.map((group) => group.conflictGroup),
     safetyReplacements: sanitized.replacements,
   };
+}
+
+/** 排队/异常时的统一兜底报告，不暴露任何底层错误细节。 */
+export function buildQueuedReport(request: Pick<ReportRequest, "hits">): BaziReport {
+  const markdown = `${REPORT_QUEUE_MESSAGE}\n\n${REPORT_CLOSING}`;
+  return {
+    provider: "unavailable",
+    model: "llm",
+    title: REPORT_TITLE,
+    markdown,
+    text: markdown,
+    ruleIds: request.hits.map((hit) => hit.ruleId),
+    conflictGroups: [],
+    safetyReplacements: [],
+  };
+}
+
+function resolveChatEndpoint(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return trimmed.endsWith("/chat/completions") ? trimmed : `${trimmed}/chat/completions`;
+}
+
+function buildLlmUserPrompt({ chart, hits, currentYear }: ReportRequest): string {
+  const year = currentYear ?? new Date().getFullYear();
+  return [
+    `当前年份：${year} 年。请严格依据以下排盘事实与规则命中生成三篇报告。`,
+    "只输出 Markdown 正文，不要代码块，不要额外的前言或说明。",
+    "排盘事实与规则命中（JSON）：",
+    JSON.stringify({ chart, hits }),
+  ].join("\n\n");
+}
+
+function extractMessageContent(data: unknown): string | null {
+  if (typeof data !== "object" || data === null) return null;
+  const choices = (data as { choices?: unknown }).choices;
+  if (!Array.isArray(choices) || choices.length === 0) return null;
+  const first = choices[0];
+  if (typeof first !== "object" || first === null) return null;
+  const message = (first as { message?: unknown }).message;
+  if (typeof message !== "object" || message === null) return null;
+  const content = (message as { content?: unknown }).content;
+  return typeof content === "string" && content.trim().length > 0 ? content.trim() : null;
+}
+
+function normalizeMarkdown(content: string): string {
+  const stripped = content
+    .replace(/^```(?:markdown|md)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/, "")
+    .trim();
+  if (stripped.includes(REPORT_CLOSING)) return stripped;
+  return `${stripped}\n\n${REPORT_CLOSING}`;
+}
+
+/**
+ * 服务端真实 LLM 调用（兼容 SiliconFlow / OpenAI Chat Completions）。
+ * 任何失败都返回统一排队文案，不向前端泄露状态码、堆栈或提供商信息。
+ */
+export async function requestBaziReport(request: ReportRequest): Promise<BaziReport> {
+  const apiKey = process.env.LLM_API_KEY?.trim();
+  const baseUrl = process.env.LLM_BASE_URL?.trim();
+  const model = process.env.LLM_MODEL?.trim();
+
+  if (!apiKey || !baseUrl || !model) return buildQueuedReport(request);
+
+  try {
+    const response = await fetch(resolveChatEndpoint(baseUrl), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: REPORT_SYSTEM_PROMPT },
+          { role: "user", content: buildLlmUserPrompt(request) },
+        ],
+        temperature: 0.7,
+        max_tokens: 4096,
+        stream: false,
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+
+    if (!response.ok) return buildQueuedReport(request);
+
+    const content = extractMessageContent(await response.json());
+    if (!content) return buildQueuedReport(request);
+
+    const sanitized = sanitizeReportText(normalizeMarkdown(content));
+    const conflictGroups = groupRuleHits(request.hits).filter((group) => group.hits.length > 1);
+
+    return {
+      provider: "llm",
+      model,
+      title: REPORT_TITLE,
+      markdown: sanitized.text,
+      text: sanitized.text,
+      ruleIds: request.hits.map((hit) => hit.ruleId),
+      conflictGroups: conflictGroups.map((group) => group.conflictGroup),
+      safetyReplacements: sanitized.replacements,
+    };
+  } catch {
+    return buildQueuedReport(request);
+  }
 }
