@@ -32,10 +32,13 @@ pnpm build          # 生产构建
 - M2：`POST /api/bazi/chart`：服务端排盘接口，返回完整 `ChartFacts` JSON
 - M2：`data/cases/golden/bazi/`：3 个黄金案例（普通、立春交界、23 点子时），Vitest 全量快照回归
 - M2：首页「快速排盘」表单，客户端直接调用排盘引擎并展示四柱与原始 JSON
-- M3：`src/lib/schemas/rule-card.ts`：规则卡 Schema（编号、流派、来源、条件、结论、冲突组、置信度），条件 DSL 覆盖同党占比、日主通根、月令关系、五行缺失、十神透干、六冲、三合与暗合
-- M3：`data/rules/bazi/`：15 条基础规则（旺衰、十神、五行、刑冲合害，子平与盲派并存）
+- M3：`src/lib/schemas/rule-card.ts`：规则卡 Schema（编号、流派、来源、条件、结论、冲突组、置信度），条件 DSL 覆盖同党占比、日主通根、月令关系、五行缺失、十神透干与十神组合、六冲、三合、天干五合、三刑/子卯刑/自刑、六害与暗合
+- M3：`data/rules/bazi/`：30 条基础规则（旺衰、十神组合、五行、刑冲合害，子平与盲派并存）
 - M3：`src/lib/engines/rules.ts`：确定性 `evaluateRules()` 输出命中规则与可追溯证据；`groupRuleHits()` 按冲突组聚合，同组多条并列、不合并裁决
 - M3：首页四柱改为横向网格，每柱列出天干十神与地支藏干；「命理分析（规则命中）」按冲突组分列展示流派与置信度，无命中时显示「当前排盘未命中知识库规则」
+- M4：`src/lib/llm/gateway.ts`：本地模板 mock 报告生成器，只读取 `ChartFacts` 与 `RuleHit[]`，输出约 300 字解读、规则编号、冲突组与免责声明
+- M4：报告安全过滤：命中「必定、注定、破财、改运」等合规词表时自动替换为「可能、注意、建议」口径
+- M4：首页底部「AI 智能解读报告」区块，点击「生成报告」即时展示首行缩进、宽行高的解读文字
 
 ## API：确定性排盘
 
@@ -67,6 +70,7 @@ src/
   components/      # 站点组件 + ui 原子组件
   lib/
     engines/       # 确定性排盘引擎与规则执行器
+    llm/           # 本地模板报告网关（mock provider）
     rules/         # 规则库加载与校验
     schemas/       # zod 入参 / 出参 Schema
 data/cases/golden/ # 黄金命例快照

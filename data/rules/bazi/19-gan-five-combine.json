@@ -1,0 +1,25 @@
+{
+  "id": "bazi.combine.gan-five.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "天干五合：甲己合土、乙庚合金、丙辛合水、丁壬合木、戊癸合火。本规则只判相合关系，不判合化成败。"
+  },
+  "name": "天干五合",
+  "condition": {
+    "type": "ganCombine",
+    "pairs": [
+      ["甲", "己"],
+      ["乙", "庚"],
+      ["丙", "辛"],
+      ["丁", "壬"],
+      ["戊", "癸"]
+    ]
+  },
+  "output": {
+    "summary": "四柱天干出现天干五合中的至少一组相合关系。",
+    "caveat": "天干相合是否合化，需结合月令、地支通根与全局强弱判断；本规则只记录相合事实。"
+  },
+  "conflictGroup": "gan.combine",
+  "confidence": "medium"
+}

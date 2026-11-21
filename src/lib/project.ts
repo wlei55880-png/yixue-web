@@ -23,14 +23,14 @@ export const MILESTONES: readonly Milestone[] = [
   {
     id: "M3",
     title: "规则知识库与冲突组",
-    summary: "规则卡 Schema、条件 DSL、15 条旺衰/十神/五行/刑冲合害规则、冲突组聚合与首页命中面板；四柱横向网格展示十神与藏干。",
-    status: "in_progress",
+    summary: "30 条旺衰、十神组合、五行与刑冲合害规则，冲突组聚合，首页四柱网格与规则面板。",
+    status: "done",
   },
   {
     id: "M4",
     title: "LLM 解释网关",
-    summary: "服务端网关仅接收排盘事实、命中规则卡与冲突组；结构化 JSON 校验，无 Key 时使用 mock provider。",
-    status: "planned",
+    summary: "已完成本地模板 mock 报告：读取排盘事实与命中规则，输出约 300 字解读并过滤绝对化用语；真实外部模型待接。",
+    status: "in_progress",
   },
   {
     id: "M5",

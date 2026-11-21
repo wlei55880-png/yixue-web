@@ -80,4 +80,21 @@ test.describe("规则命中面板", () => {
     await expect(page.getByText("天干透正官")).toBeVisible();
     await expect(page.getByText("天干透七杀")).toBeVisible();
   });
+
+  test("生成 AI 智能解读报告且不含绝对化用语", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "排盘" }).click();
+    await page.getByRole("button", { name: "生成报告" }).click();
+
+    const report = page.locator("#ai-report");
+    await expect(report.getByRole("heading", { name: "AI 智能解读报告" })).toBeVisible();
+    await expect(report).toContainText("日主为丙火");
+    await expect(report).toContainText("本报告由本地模板引擎生成");
+
+    const text = await report.innerText();
+    for (const word of ["必定", "注定", "破财", "改运"]) {
+      expect(text).not.toContain(word);
+    }
+  });
 });

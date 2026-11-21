@@ -1,0 +1,19 @@
+{
+  "id": "bazi.punishment.self.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "《三命通会》",
+    "note": "辰、午、酉、亥为自刑地支，同一地支重复出现方构成自刑。本规则只记录重复事实。"
+  },
+  "name": "地支自刑（辰午酉亥）",
+  "condition": {
+    "type": "branchSelfPunishment",
+    "branches": ["辰", "午", "酉", "亥"]
+  },
+  "output": {
+    "summary": "四柱地支中辰、午、酉、亥之一重复出现，构成自刑的组合。",
+    "caveat": "自刑的轻重需结合月令、旺衰与整体组合判断，不宜单见重复地支即作结论。"
+  },
+  "conflictGroup": "branch.punishment",
+  "confidence": "medium"
+}

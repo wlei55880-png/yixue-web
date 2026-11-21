@@ -1,0 +1,19 @@
+{
+  "id": "bazi.ten-god.wealth-mix.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《三命通会》",
+    "note": "正财与偏财同时透于天干，传统称财星混杂。本规则只判同透事实，不推断具体财务结果。"
+  },
+  "name": "正偏财同透",
+  "condition": {
+    "type": "visibleTenGodAll",
+    "tenGods": ["正财", "偏财"]
+  },
+  "output": {
+    "summary": "四柱天干同时透出正财与偏财，构成财星混杂的十神组合。",
+    "caveat": "财星混杂需结合日主旺衰、食伤生财与官杀护财综合判断，不宜单见即断得失。"
+  },
+  "conflictGroup": "ten-god.wealth-mix",
+  "confidence": "medium"
+}

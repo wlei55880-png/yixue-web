@@ -1,0 +1,19 @@
+{
+  "id": "bazi.punishment.yin-si-shen.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "《三命通会》",
+    "note": "寅巳申为三刑之一，取三支齐现之义。本规则只记录刑的组合，不推断具体吉凶事件。"
+  },
+  "name": "地支寅巳申三刑",
+  "condition": {
+    "type": "branchPunishment",
+    "branches": ["寅", "巳", "申"]
+  },
+  "output": {
+    "summary": "四柱地支齐见寅、巳、申，构成寅巳申三刑的组合。",
+    "caveat": "刑的轻重需结合月令、旺衰与冲合综合判断，不宜单见三刑即断吉凶。"
+  },
+  "conflictGroup": "branch.punishment",
+  "confidence": "medium"
+}

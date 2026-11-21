@@ -1,0 +1,19 @@
+{
+  "id": "bazi.combine.si-you-chou.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "巳酉丑三合金局，取三支齐现之义。本规则只判三支是否同时出现，不判断合化成功与金势强弱。"
+  },
+  "name": "地支巳酉丑三合金局",
+  "condition": {
+    "type": "branchTripleCombine",
+    "branches": ["巳", "酉", "丑"]
+  },
+  "output": {
+    "summary": "四柱地支齐见巳、酉、丑，构成三合金局的组合。",
+    "caveat": "三合是否成局仍需月令、透干与冲刑破害综合判断，本规则仅记录三支齐现这一事实。"
+  },
+  "conflictGroup": "branch.triple-combine",
+  "confidence": "medium"
+}

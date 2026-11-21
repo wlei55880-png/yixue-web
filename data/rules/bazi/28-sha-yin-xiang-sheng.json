@@ -1,0 +1,19 @@
+{
+  "id": "bazi.ten-god.sha-yin.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《滴天髓》",
+    "note": "七杀与正印同时透于天干，传统称「杀印相生」。本规则只判同透事实，不判断化杀是否成功。"
+  },
+  "name": "杀印相生",
+  "condition": {
+    "type": "visibleTenGodAll",
+    "tenGods": ["七杀", "正印"]
+  },
+  "output": {
+    "summary": "四柱天干同时透出七杀与正印，构成杀印相生的十神组合。",
+    "caveat": "杀印是否相生转化，需看七杀强弱、印星是否得地以及日主能否承受，不宜单见即断。"
+  },
+  "conflictGroup": "ten-god.kill-seal",
+  "confidence": "medium"
+}

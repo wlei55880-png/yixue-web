@@ -1,0 +1,19 @@
+{
+  "id": "bazi.ten-god.shi-shang.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "食神与伤官同时透于天干，传统称食伤同透。本规则只判同透事实，不判断食伤是否得用。"
+  },
+  "name": "食伤同透",
+  "condition": {
+    "type": "visibleTenGodAll",
+    "tenGods": ["食神", "伤官"]
+  },
+  "output": {
+    "summary": "四柱天干同时透出食神与伤官，构成食伤同透的十神组合。",
+    "caveat": "食伤同透需结合日主旺衰、财星承接与印星制化判断，不宜单见即断吉凶。"
+  },
+  "conflictGroup": "ten-god.output-mix",
+  "confidence": "medium"
+}

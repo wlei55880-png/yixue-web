@@ -1,0 +1,19 @@
+{
+  "id": "bazi.ten-god.shang-guan-jian-guan.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《渊海子平》",
+    "note": "伤官与正官同时透于天干，传统称「伤官见官」。本规则只判同透事实，不推断具体人事。"
+  },
+  "name": "伤官见官",
+  "condition": {
+    "type": "visibleTenGodAll",
+    "tenGods": ["伤官", "正官"]
+  },
+  "output": {
+    "summary": "四柱天干同时透出伤官与正官，构成伤官见官的十神组合。",
+    "caveat": "该组合的吉凶取决于伤官与正官的强弱、位置及是否有财印通关，不宜单见即断。"
+  },
+  "conflictGroup": "ten-god.output-officer",
+  "confidence": "medium"
+}

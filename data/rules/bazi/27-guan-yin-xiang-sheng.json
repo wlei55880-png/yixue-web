@@ -1,0 +1,19 @@
+{
+  "id": "bazi.ten-god.guan-yin.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《子平真诠》",
+    "note": "正官与正印同时透于天干，传统称「官印相生」。本规则只判同透事实，不判断格局高低。"
+  },
+  "name": "官印相生",
+  "condition": {
+    "type": "visibleTenGodAll",
+    "tenGods": ["正官", "正印"]
+  },
+  "output": {
+    "summary": "四柱天干同时透出正官与正印，构成官印相生的十神组合。",
+    "caveat": "官印是否相生有情，需看官星是否生印、印星是否得地以及日主旺衰，不宜单见即断。"
+  },
+  "conflictGroup": "ten-god.officer-seal",
+  "confidence": "medium"
+}

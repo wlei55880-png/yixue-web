@@ -1,0 +1,19 @@
+{
+  "id": "bazi.ten-god.shi-shen-zhi-sha.001",
+  "school": "子平·十神",
+  "source": {
+    "work": "《子平真诠》",
+    "note": "食神与七杀同时透于天干，传统称「食神制杀」。本规则只判同透事实，不判断制杀是否有力。"
+  },
+  "name": "食神制杀",
+  "condition": {
+    "type": "visibleTenGodAll",
+    "tenGods": ["食神", "七杀"]
+  },
+  "output": {
+    "summary": "四柱天干同时透出食神与七杀，构成食神制杀的十神组合。",
+    "caveat": "制杀是否有效取决于食神与七杀的强弱、位置与日主能否承担，不宜单见即断。"
+  },
+  "conflictGroup": "ten-god.food-kill",
+  "confidence": "medium"
+}

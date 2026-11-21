@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBaziChart } from "@/lib/engines/bazi";
 import { evaluateRules, groupRuleHits } from "@/lib/engines/rules";
+import { generateBaziReport, REPORT_DISCLAIMER, type BaziReport } from "@/lib/llm/gateway";
 import { BAZI_RULES, CONFLICT_GROUP_LABELS } from "@/lib/rules/bazi";
 import type { ChartFacts, Gender, PillarKey } from "@/lib/schemas/chart-facts";
 import type { RuleConfidence, RuleHit } from "@/lib/schemas/rule-card";
@@ -24,6 +25,7 @@ const inputClassName =
 export function BaziForm() {
   const [chart, setChart] = React.useState<ChartFacts | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [report, setReport] = React.useState<BaziReport | null>(null);
   const ruleHits = chart ? evaluateRules(chart, BAZI_RULES) : [];
   const ruleGroups = groupRuleHits(ruleHits);
 
@@ -46,11 +48,18 @@ export function BaziForm() {
         gender: (data.get("gender") === "female" ? "female" : "male") as Gender,
       });
       setChart(result);
+      setReport(null);
       setError(null);
     } catch (cause) {
       setChart(null);
+      setReport(null);
       setError(cause instanceof Error ? cause.message : "排盘失败，请检查输入");
     }
+  }
+
+  function handleGenerateReport() {
+    if (!chart) return;
+    setReport(generateBaziReport({ chart, hits: ruleHits }));
   }
 
   return (
@@ -172,6 +181,50 @@ export function BaziForm() {
               <summary className="cursor-pointer text-muted-foreground">查看排盘 JSON</summary>
               <pre className="mt-3 overflow-x-auto text-xs leading-5">{JSON.stringify(chart, null, 2)}</pre>
             </details>
+            <div id="ai-report" className="rounded-lg border border-primary/25 bg-primary/[0.03] p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="font-serif text-lg">AI 智能解读报告</h3>
+                  <p className="text-xs leading-6 text-muted-foreground">
+                    由本地模板引擎基于排盘事实与命中规则生成，暂不调用外部模型。
+                  </p>
+                </div>
+                {report ? (
+                  <Button type="button" variant="outline" size="sm" onClick={handleGenerateReport}>
+                    重新生成
+                  </Button>
+                ) : null}
+              </div>
+              {report ? (
+                <div aria-live="polite" className="mt-4 space-y-3">
+                  {report.paragraphs
+                    .filter((paragraph) => paragraph !== REPORT_DISCLAIMER)
+                    .map((paragraph) => (
+                      <p
+                        key={`${paragraph.slice(0, 16)}-${paragraph.length}`}
+                        className="indent-8 font-serif text-[15px] leading-8 text-foreground/90 sm:text-base"
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  <p className="border-t border-border/60 pt-3 text-xs leading-6 text-muted-foreground">
+                    {REPORT_DISCLAIMER}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/80">
+                    引用规则 {report.ruleIds.length} 条 · 生成方式：本地模板（{report.model}）
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  <Button type="button" onClick={handleGenerateReport}>
+                    生成报告
+                  </Button>
+                  <p className="text-xs leading-6 text-muted-foreground">
+                    报告会引用上方命中的规则编号，冲突处并列保留，不给出绝对化结论。
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
       </CardContent>

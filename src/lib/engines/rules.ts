@@ -7,6 +7,7 @@ import {
 } from "@/lib/domain/wuxing";
 import type { ChartFacts, Element, PillarKey } from "@/lib/schemas/chart-facts";
 import {
+  GAN_COMBINE_PAIRS,
   HIDDEN_COMBINE_PAIRS,
   MONTH_RELATION_VALUES,
   TRIPLE_COMBINE_GROUPS,
@@ -78,6 +79,16 @@ function matchCondition(chart: ChartFacts, condition: RuleCondition): string[] |
       return matchBranchTripleCombine(chart, condition);
     case "branchHiddenCombine":
       return matchBranchHiddenCombine(chart, condition);
+    case "ganCombine":
+      return matchGanCombine(chart, condition);
+    case "visibleTenGodAll":
+      return matchVisibleTenGodAll(chart, condition);
+    case "branchPunishment":
+      return matchBranchPunishment(chart, condition);
+    case "branchSelfPunishment":
+      return matchBranchSelfPunishment(chart, condition);
+    case "branchHarm":
+      return matchBranchHarm(chart, condition);
   }
 }
 
@@ -253,6 +264,97 @@ function matchBranchHiddenCombine(
   return evidence.length > 0 ? evidence : null;
 }
 
+function matchGanCombine(
+  chart: ChartFacts,
+  condition: Extract<RuleCondition, { type: "ganCombine" }>,
+): string[] | null {
+  const stems = PILLAR_ORDER.map((key) => {
+    const pillar = chart.pillars[key];
+    return { gan: pillar.gan, label: `${pillar.label.charAt(0)}干` };
+  });
+
+  const evidence: string[] = [];
+  for (const [left, right] of condition.pairs) {
+    const leftStems = stems.filter((stem) => stem.gan === left);
+    const rightStems = stems.filter((stem) => stem.gan === right);
+    const known = GAN_COMBINE_PAIRS.find((item) => isSamePair(item.gans, left, right));
+    for (const leftStem of leftStems) {
+      for (const rightStem of rightStems) {
+        evidence.push(
+          `${leftStem.label}${left} 与 ${rightStem.label}${right} 构成天干相合（${left}${right}合${known ? known.element : ""}，合化与否另论）`,
+        );
+      }
+    }
+  }
+  return evidence.length > 0 ? evidence : null;
+}
+
+function matchVisibleTenGodAll(
+  chart: ChartFacts,
+  condition: Extract<RuleCondition, { type: "visibleTenGodAll" }>,
+): string[] | null {
+  const details: string[] = [];
+  for (const tenGod of condition.tenGods) {
+    const matched = PILLAR_ORDER.filter((key) => chart.pillars[key].shiShenGan === tenGod);
+    const key = matched.at(0);
+    if (!key) return null;
+    const pillar = chart.pillars[key];
+    details.push(`${pillar.label.charAt(0)}干${pillar.gan}为${tenGod}`);
+  }
+  return [`天干同时透出${condition.tenGods.join("、")}：${details.join("、")}`];
+}
+
+function matchBranchPunishment(
+  chart: ChartFacts,
+  condition: Extract<RuleCondition, { type: "branchPunishment" }>,
+): string[] | null {
+  const positions = collectBranchPositions(chart);
+  const labels: string[] = [];
+  for (const branch of condition.branches) {
+    const position = positions.get(branch)?.at(0);
+    if (!position) return null;
+    labels.push(`${position}${branch}`);
+  }
+
+  const kind = condition.branches.length === 3 ? "三刑" : "相刑";
+  return [`${labels.join("、")}构成${condition.branches.join("")}${kind}`];
+}
+
+function matchBranchSelfPunishment(
+  chart: ChartFacts,
+  condition: Extract<RuleCondition, { type: "branchSelfPunishment" }>,
+): string[] | null {
+  const positions = collectBranchPositions(chart);
+  const evidence: string[] = [];
+  for (const branch of condition.branches) {
+    const list = positions.get(branch) ?? [];
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        evidence.push(`${list[i]}${branch} 与 ${list[j]}${branch} 构成自刑（${branch}${branch}）`);
+      }
+    }
+  }
+  return evidence.length > 0 ? evidence : null;
+}
+
+function matchBranchHarm(
+  chart: ChartFacts,
+  condition: Extract<RuleCondition, { type: "branchHarm" }>,
+): string[] | null {
+  const positions = collectBranchPositions(chart);
+  const evidence: string[] = [];
+  for (const [left, right] of condition.pairs) {
+    const leftPositions = positions.get(left) ?? [];
+    const rightPositions = positions.get(right) ?? [];
+    for (const leftPosition of leftPositions) {
+      for (const rightPosition of rightPositions) {
+        evidence.push(`${leftPosition}${left} 与 ${rightPosition}${right} 构成${left}${right}害`);
+      }
+    }
+  }
+  return evidence.length > 0 ? evidence : null;
+}
+
 function collectBranchPositions(chart: ChartFacts): Map<string, string[]> {
   const positions = new Map<string, string[]>();
   for (const key of PILLAR_ORDER) {
@@ -265,10 +367,12 @@ function collectBranchPositions(chart: ChartFacts): Map<string, string[]> {
 }
 
 function canonicalPair(left: string, right: string): string {
-  const pair = HIDDEN_COMBINE_PAIRS.find(
-    ([first, second]) => (first === left && second === right) || (first === right && second === left),
-  );
+  const pair = HIDDEN_COMBINE_PAIRS.find((known) => isSamePair(known, left, right));
   return pair ? `${pair[0]}${pair[1]}` : `${left}${right}`;
+}
+
+function isSamePair(pair: readonly [string, string], left: string, right: string): boolean {
+  return (pair[0] === left && pair[1] === right) || (pair[0] === right && pair[1] === left);
 }
 
 export interface RuleHitGroup {

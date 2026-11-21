@@ -1,0 +1,19 @@
+{
+  "id": "bazi.punishment.zi-mao.001",
+  "school": "子平·刑冲合害",
+  "source": {
+    "work": "《三命通会》",
+    "note": "子卯相刑，取两地支同时出现之义。本规则只记录刑的组合，不推断具体吉凶事件。"
+  },
+  "name": "地支子卯相刑",
+  "condition": {
+    "type": "branchPunishment",
+    "branches": ["子", "卯"]
+  },
+  "output": {
+    "summary": "四柱地支同时出现子、卯，构成子卯相刑的组合。",
+    "caveat": "相刑的轻重需结合月令、旺衰与冲合综合判断，不宜单见相刑即断吉凶。"
+  },
+  "conflictGroup": "branch.punishment",
+  "confidence": "medium"
+}

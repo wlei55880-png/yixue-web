@@ -14,8 +14,8 @@ const ruleDocuments = ruleFiles.map(
 );
 
 describe("规则卡文件", () => {
-  it("收录 15 条基础规则，且全部通过 Schema 校验", () => {
-    expect(ruleFiles).toHaveLength(15);
+  it("收录 30 条基础规则，且全部通过 Schema 校验", () => {
+    expect(ruleFiles).toHaveLength(30);
     const parsed = RuleCardListSchema.safeParse(ruleDocuments);
     const detail = parsed.success ? "" : JSON.stringify(parsed.error.issues);
     expect(parsed.success, detail).toBe(true);
@@ -46,6 +46,22 @@ describe("RuleCardSchema 防护", () => {
 
   it("拒绝非法的地支三合局", () => {
     const invalid = { ...base, condition: { type: "branchTripleCombine", branches: ["申", "子", "午"] } };
+    expect(RuleCardSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("拒绝非法的天干五合、刑组、自刑与六害", () => {
+    const invalidGan = { ...base, condition: { type: "ganCombine", pairs: [["甲", "乙"]] } };
+    const invalidPunishment = { ...base, condition: { type: "branchPunishment", branches: ["子", "丑"] } };
+    const invalidSelf = { ...base, condition: { type: "branchSelfPunishment", branches: ["子"] } };
+    const invalidHarm = { ...base, condition: { type: "branchHarm", pairs: [["子", "午"]] } };
+    expect(RuleCardSchema.safeParse(invalidGan).success).toBe(false);
+    expect(RuleCardSchema.safeParse(invalidPunishment).success).toBe(false);
+    expect(RuleCardSchema.safeParse(invalidSelf).success).toBe(false);
+    expect(RuleCardSchema.safeParse(invalidHarm).success).toBe(false);
+  });
+
+  it("拒绝重复的十神组合", () => {
+    const invalid = { ...base, condition: { type: "visibleTenGodAll", tenGods: ["正官", "正官"] } };
     expect(RuleCardSchema.safeParse(invalid).success).toBe(false);
   });
 

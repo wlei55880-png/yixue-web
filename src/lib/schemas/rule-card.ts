@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ELEMENT_VALUES, ZHI_VALUES } from "@/lib/schemas/chart-facts";
+import { ELEMENT_VALUES, GAN_VALUES, ZHI_VALUES } from "@/lib/schemas/chart-facts";
 
 export const SCHOOL_VALUES = [
   "子平·旺衰",
@@ -51,7 +51,37 @@ export const TRIPLE_COMBINE_GROUPS = [
   { branches: ["巳", "酉", "丑"], element: "金" },
 ] as const;
 
+/** 天干五合；规则只判断相合关系，合化成功与否另论。 */
+export const GAN_COMBINE_PAIRS = [
+  { gans: ["甲", "己"], element: "土" },
+  { gans: ["乙", "庚"], element: "金" },
+  { gans: ["丙", "辛"], element: "水" },
+  { gans: ["丁", "壬"], element: "木" },
+  { gans: ["戊", "癸"], element: "火" },
+] as const;
+
+/** 地支刑组：三刑与子卯相刑。 */
+export const PUNISHMENT_GROUPS = [
+  ["寅", "巳", "申"],
+  ["丑", "戌", "未"],
+  ["子", "卯"],
+] as const;
+
+/** 自刑地支：同支重复出现方构成自刑。 */
+export const SELF_PUNISHMENT_BRANCHES = ["辰", "午", "酉", "亥"] as const;
+
+/** 地支六害。 */
+export const SIX_HARM_PAIRS = [
+  ["子", "未"],
+  ["丑", "午"],
+  ["寅", "巳"],
+  ["卯", "辰"],
+  ["申", "亥"],
+  ["酉", "戌"],
+] as const;
+
 const ZhiSchema = z.enum(ZHI_VALUES);
+const GanSchema = z.enum(GAN_VALUES);
 const TenGodSchema = z.enum(TEN_GOD_VALUES);
 const MonthRelationSchema = z.enum(MONTH_RELATION_VALUES);
 
@@ -130,6 +160,72 @@ const ConditionSchema = z.discriminatedUnion("type", [
       value.pairs.forEach((pair, index) => {
         if (!HIDDEN_COMBINE_PAIRS.some((known) => isSamePair(known, pair[0], pair[1]))) {
           ctx.addIssue({ code: "custom", message: "并非有效的地支暗合对", path: ["pairs", index] });
+        }
+      });
+    }),
+  z
+    .object({
+      type: z.literal("ganCombine"),
+      pairs: z.array(z.tuple([GanSchema, GanSchema])).min(1).max(5),
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      value.pairs.forEach((pair, index) => {
+        if (!GAN_COMBINE_PAIRS.some((known) => isSamePair(known.gans, pair[0], pair[1]))) {
+          ctx.addIssue({ code: "custom", message: "并非有效的天干五合对", path: ["pairs", index] });
+        }
+      });
+    }),
+  z
+    .object({
+      type: z.literal("visibleTenGodAll"),
+      tenGods: z.array(TenGodSchema).min(2).max(4),
+    })
+    .strict()
+    .refine((value) => new Set(value.tenGods).size === value.tenGods.length, {
+      message: "十神组合不可重复",
+      path: ["tenGods"],
+    }),
+  z
+    .object({
+      type: z.literal("branchPunishment"),
+      branches: z.array(ZhiSchema).min(2).max(3),
+    })
+    .strict()
+    .refine((value) => new Set(value.branches).size === value.branches.length, {
+      message: "刑组地支不可重复",
+      path: ["branches"],
+    })
+    .refine(
+      (value) =>
+        PUNISHMENT_GROUPS.some(
+          (group) => group.length === value.branches.length && group.every((branch) => value.branches.includes(branch)),
+        ),
+      { message: "并非有效的地支刑组", path: ["branches"] },
+    ),
+  z
+    .object({
+      type: z.literal("branchSelfPunishment"),
+      branches: z.array(ZhiSchema).min(1).max(4),
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      value.branches.forEach((branch, index) => {
+        if (!(SELF_PUNISHMENT_BRANCHES as readonly string[]).includes(branch)) {
+          ctx.addIssue({ code: "custom", message: "并非自刑地支（辰、午、酉、亥）", path: ["branches", index] });
+        }
+      });
+    }),
+  z
+    .object({
+      type: z.literal("branchHarm"),
+      pairs: z.array(z.tuple([ZhiSchema, ZhiSchema])).min(1).max(6),
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      value.pairs.forEach((pair, index) => {
+        if (!SIX_HARM_PAIRS.some((known) => isSamePair(known, pair[0], pair[1]))) {
+          ctx.addIssue({ code: "custom", message: "并非有效的地支六害对", path: ["pairs", index] });
         }
       });
     }),

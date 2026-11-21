@@ -21,21 +21,31 @@ const maoYou = chartOf({ year: 1970, month: 1, day: 1, hour: 6, minute: 30 });
 const tripleCombine = chartOf({ year: 1970, month: 4, day: 10, hour: 0, minute: 30 });
 
 describe("evaluateRules 命中", () => {
-  it("普通案例：子午冲 + 暗合 + 偏印，按规则库顺序返回", () => {
+  it("普通案例：六冲、暗合、偏印、天干五合、六害按规则库顺序返回", () => {
     const hits = evaluateRules(normal, BAZI_RULES);
-    expect(hits.map((hit) => hit.name)).toEqual(["地支子午冲", "地支暗合", "天干透偏印"]);
+    expect(hits.map((hit) => hit.name)).toEqual([
+      "地支子午冲",
+      "地支暗合",
+      "天干透偏印",
+      "天干五合",
+      "地支六害",
+    ]);
     expect(hits[0]?.evidence[0]).toContain("月支子 与 时支午 构成子午冲");
     expect(hits[1]?.evidence[0]).toContain("月支子 与 年支巳 暗合");
+    expect(hits[3]?.evidence[0]).toContain("甲己合土");
+    expect(hits[4]?.evidence[0]).toContain("寅巳害");
     expect(hits.every((hit) => RuleHitSchema.safeParse(hit).success)).toBe(true);
   });
 
-  it("立春交界案例：正官、偏弱、偏印、辰戌冲", () => {
+  it("立春交界案例：正官、偏弱、偏印、辰戌冲、天干五合、六害", () => {
     const hits = evaluateRules(lichun, BAZI_RULES);
     expect(hits.map((hit) => hit.name)).toEqual([
       "天干透正官",
       "日主同党偏弱（≤35%）",
       "天干透偏印",
       "地支辰戌冲",
+      "天干五合",
+      "地支六害",
     ]);
     expect(hits[0]?.evidence[0]).toContain("年干己为正官");
   });
@@ -46,24 +56,27 @@ describe("evaluateRules 命中", () => {
     expect(hits[0]?.evidence[0]).toContain("月支寅 与 日支丑 暗合");
   });
 
-  it("五行缺火、偏弱、无根、正印", () => {
+  it("五行缺火、偏弱、无根、正印、子卯相刑", () => {
     const hits = evaluateRules(missingFire, BAZI_RULES);
     expect(hits.map((hit) => hit.name)).toEqual([
       "五行缺火",
       "日主同党偏弱（≤35%）",
       "日主无根（盲派）",
       "天干透正印",
+      "地支子卯相刑",
     ]);
     expect(hits[1]?.evidence[0]).toContain("未超过阈值 35%");
     expect(hits[2]?.evidence[0]).toContain("日主辛无根");
+    expect(hits[4]?.evidence[0]).toContain("构成子卯相刑");
   });
 
-  it("日主极旺、得月令、正印", () => {
+  it("日主极旺、得月令、正印、六害", () => {
     const hits = evaluateRules(strong, BAZI_RULES);
     expect(hits.map((hit) => hit.name)).toEqual([
       "日主同党极旺（≥60%）",
       "日主得月令",
       "天干透正印",
+      "地支六害",
     ]);
     expect(hits[0]?.evidence[0]).toContain("12/17");
     expect(hits[1]?.evidence[0]).toContain("「同气」");
@@ -95,6 +108,62 @@ describe("evaluateRules 命中", () => {
   });
 });
 
+describe("新增组合规则", () => {
+  it("三合火局、三刑、自刑、六害可命中", () => {
+    const fireCombine = evaluateRules(chartOf({ year: 1960, month: 2, day: 16, hour: 12, minute: 30 }), BAZI_RULES);
+    expect(fireCombine.map((hit) => hit.name)).toContain("地支寅午戌三合火局");
+    expect(fireCombine.find((hit) => hit.name === "地支寅午戌三合火局")?.evidence[0]).toContain(
+      "构成寅午戌三合火局",
+    );
+
+    const punishment = evaluateRules(chartOf({ year: 1962, month: 5, day: 10, hour: 0, minute: 30 }), BAZI_RULES);
+    expect(punishment.map((hit) => hit.name)).toContain("地支寅巳申三刑");
+    expect(punishment.find((hit) => hit.name === "地支寅巳申三刑")?.evidence[0]).toContain("构成寅巳申三刑");
+
+    const selfPunishment = evaluateRules(chartOf({ year: 1960, month: 1, day: 7, hour: 12, minute: 30 }), BAZI_RULES);
+    expect(selfPunishment.map((hit) => hit.name)).toContain("地支自刑（辰午酉亥）");
+    expect(selfPunishment.find((hit) => hit.name === "地支自刑（辰午酉亥）")?.evidence[0]).toContain("构成自刑");
+
+    const harm = evaluateRules(chartOf({ year: 1960, month: 1, day: 2, hour: 12, minute: 30 }), BAZI_RULES);
+    expect(harm.map((hit) => hit.name)).toContain("地支六害");
+    expect(harm.find((hit) => hit.name === "地支六害")?.evidence[0]).toContain("丑午害");
+  });
+
+  it("十神组合规则可命中", () => {
+    const cases = [
+      { name: "伤官见官", input: { year: 1960, month: 2, day: 7, hour: 0, minute: 30 } },
+      { name: "食神制杀", input: { year: 1960, month: 1, day: 3, hour: 12, minute: 30 } },
+      { name: "官印相生", input: { year: 1960, month: 1, day: 2, hour: 0, minute: 30 } },
+      { name: "杀印相生", input: { year: 1960, month: 1, day: 3, hour: 0, minute: 30 } },
+      { name: "正偏财同透", input: { year: 1960, month: 1, day: 15, hour: 12, minute: 30 } },
+      { name: "食伤同透", input: { year: 1960, month: 1, day: 8, hour: 0, minute: 30 } },
+    ] as const;
+
+    for (const item of cases) {
+      const hits = evaluateRules(chartOf(item.input), BAZI_RULES);
+      const hit = hits.find((candidate) => candidate.name === item.name);
+      expect(hit, `${item.name} 未命中`).toBeDefined();
+      expect(hit?.evidence[0]).toContain("天干同时透出");
+    }
+  });
+
+  it("新增冲突组都有中文名称", () => {
+    for (const group of [
+      "gan.combine",
+      "branch.punishment",
+      "branch.harm",
+      "ten-god.output-officer",
+      "ten-god.food-kill",
+      "ten-god.officer-seal",
+      "ten-god.kill-seal",
+      "ten-god.wealth-mix",
+      "ten-god.output-mix",
+    ]) {
+      expect(CONFLICT_GROUP_LABELS[group], group).toBeTruthy();
+    }
+  });
+});
+
 describe("冲突组", () => {
   it("官杀同透时并列归入同一冲突组", () => {
     const hits = evaluateRules(officerMix, BAZI_RULES);
@@ -113,6 +182,6 @@ describe("冲突组", () => {
 
   it("保持命中首次出现的分组顺序", () => {
     const groups = groupRuleHits(evaluateRules(lichun, BAZI_RULES));
-    expect(groups.map((group) => group.hits.length)).toEqual([1, 1, 1, 1]);
+    expect(groups.map((group) => group.hits.length)).toEqual([1, 1, 1, 1, 1, 1]);
   });
 });
