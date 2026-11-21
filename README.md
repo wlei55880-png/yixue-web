@@ -25,7 +25,7 @@ pnpm build          # 生产构建
 ## 已实现
 
 - M1：Next.js 16 App Router + TypeScript + Tailwind CSS v4 + shadcn/ui 风格组件（本地 vendored）
-- M1：首页：V1 闭环说明、产品边界、里程碑路线、免责声明
+- M1：首页聚焦排盘工具（英雄标题 + 快速排盘表单），产品架构、边界声明与里程碑收纳在 `/about` 子页，首页底部仅保留一句免责声明
 - M1：`src/lib/compliance.ts`：绝对化预测 / 恐吓 / 付费改运 / 越界专业建议的词表扫描，后续用于校验 LLM 报告
 - M2：`src/lib/engines/bazi.ts`：基于 lunar-javascript 的确定性排盘（四柱、十神、藏干、十二长生、五行统计、大运与起运），显式记录子时流派与节气分界
 - M2：`src/lib/schemas/chart-facts.ts`：zod 入参 / 出参 Schema，拦截干支拼接、五行合计、大运跨度等结构性错误

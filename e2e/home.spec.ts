@@ -1,17 +1,19 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("首页与边界声明", () => {
-  test("展示 V1 闭环与可追溯主张", async ({ page }) => {
+test.describe("首页与产品说明", () => {
+  test("首屏即为排盘工具", async ({ page }) => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { level: 1 })).toContainText("排盘有据");
-    await expect(page.getByText("八字单点闭环", { exact: true })).toBeVisible();
-    await expect(page.getByText("规则编号").first()).toBeVisible();
-    await expect(page.getByText("知识库未覆盖").first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("断语可溯");
+    await expect(page.getByLabel("年")).toBeVisible();
+    await expect(page.getByLabel("月")).toBeVisible();
+    await expect(page.getByLabel("性别")).toBeVisible();
+    await expect(page.getByRole("link", { name: "关于产品" })).toBeVisible();
   });
 
-  test("边界声明与免责文案可见", async ({ page }) => {
-    await page.goto("/");
+  test("关于产品页保留边界声明", async ({ page }) => {
+    await page.goto("/about");
 
     const disclaimer = page.locator("#disclaimer");
     await expect(disclaimer.getByText("学习用途与边界声明")).toBeVisible();
@@ -19,8 +21,8 @@ test.describe("首页与边界声明", () => {
     await expect(disclaimer).toContainText("不提供任何以改运、消灾为名的付费服务");
   });
 
-  test("路线图标记 M1 已完成", async ({ page }) => {
-    await page.goto("/");
+  test("关于产品页标记 M1 已完成", async ({ page }) => {
+    await page.goto("/about");
 
     const firstMilestone = page.locator("#roadmap ol > li").first();
     await expect(firstMilestone).toContainText("M1");
