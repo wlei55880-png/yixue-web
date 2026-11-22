@@ -26,6 +26,13 @@ const GenerateReportSchema = z
     action: z.enum(["chart", "report"]),
     birth: BaziRequestSchema,
     currentYear: z.number().int().min(1900).max(2200).optional(),
+    focusLiuYue: z
+      .object({
+        year: z.number().int().min(1900).max(2200),
+        monthIndex: z.number().int().min(0).max(11),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -95,7 +102,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const report = await requestBaziReport({ chart, hits, currentYear: parsed.data.currentYear });
+    const report = await requestBaziReport({
+      chart,
+      hits,
+      currentYear: parsed.data.currentYear,
+      focusLiuYue: parsed.data.focusLiuYue,
+    });
     return NextResponse.json({ report: toPublicReport(report) });
   } catch {
     return NextResponse.json({ report: toPublicReport(buildQueuedReport({ hits })) });

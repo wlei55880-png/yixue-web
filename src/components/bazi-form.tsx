@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { currentMonthIndex, liuYueOf, yearGanZhi } from "@/lib/domain/liuyue";
 import { shenShaForBranch, type ShenShaBaseInfo, type ShenShaHit } from "@/lib/domain/shensha";
 import { ganElement, shiShenOf, zhiElement } from "@/lib/domain/wuxing";
 import {
@@ -47,74 +48,6 @@ const ELEMENT_TEXT: Record<Element, string> = {
   金: "text-zinc-200",
   水: "text-sky-300",
 };
-
-const GAN_CHARS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] as const;
-const ZHI_CHARS = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"] as const;
-
-interface GanZhi {
-  gan: Gan;
-  zhi: Zhi;
-  text: string;
-}
-
-/** 公历年转干支，用于流年与流月推演。 */
-function yearGanZhi(year: number): GanZhi {
-  const offset = year - 4;
-  const gan = GAN_CHARS[((offset % 10) + 10) % 10] ?? "甲";
-  const zhi = ZHI_CHARS[((offset % 12) + 12) % 12] ?? "子";
-  return { gan, zhi, text: `${gan}${zhi}` };
-}
-
-const MONTH_LABELS = [
-  "正月",
-  "二月",
-  "三月",
-  "四月",
-  "五月",
-  "六月",
-  "七月",
-  "八月",
-  "九月",
-  "十月",
-  "冬月",
-  "腊月",
-] as const;
-const MONTH_ZHI: readonly Zhi[] = ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑"];
-
-/** 五虎遁：年干决定正月天干，甲己丙、乙庚戊、丙辛庚、丁壬壬、戊癸甲。 */
-const FIRST_MONTH_GAN: Record<Gan, number> = {
-  甲: 2,
-  己: 2,
-  乙: 4,
-  庚: 4,
-  丙: 6,
-  辛: 6,
-  丁: 8,
-  壬: 8,
-  戊: 0,
-  癸: 0,
-};
-
-interface LiuYueItem {
-  label: string;
-  gan: Gan;
-  zhi: Zhi;
-  ganZhi: string;
-}
-
-/** 由流年天干推十二个流月（正月建寅）。 */
-function liuYueOf(yearGan: Gan): LiuYueItem[] {
-  const first = FIRST_MONTH_GAN[yearGan];
-  return MONTH_ZHI.map((zhi, index) => {
-    const gan = GAN_CHARS[(first + index) % 10] ?? "甲";
-    return { label: MONTH_LABELS[index] ?? "", gan, zhi, ganZhi: `${gan}${zhi}` };
-  });
-}
-
-/** 当前月令索引：0 = 寅月（立春起），与流月数组对齐。 */
-function currentMonthIndex(): number {
-  return (new Date().getMonth() + 1 + 10) % 12;
-}
 
 /** 从命盘提取神煞匹配基准，供流年、流月复用。 */
 function shenShaBaseOf(chart: ChartFacts): ShenShaBaseInfo {
@@ -195,6 +128,7 @@ export function BaziForm() {
   const [error, setError] = React.useState<string | null>(null);
   const [report, setReport] = React.useState<PublicBaziReport | null>(null);
   const [reportPending, setReportPending] = React.useState(false);
+  const [focusLiuYue, setFocusLiuYue] = React.useState<{ year: number; monthIndex: number } | null>(null);
   const chartRequestId = React.useRef(0);
   const reportRequestId = React.useRef(0);
   const [year, setYear] = React.useState(1990);
@@ -232,6 +166,7 @@ export function BaziForm() {
     setResult(null);
     setReport(null);
     setReportPending(false);
+    setFocusLiuYue(null);
     setError(null);
     setChartPending(true);
 
@@ -269,7 +204,11 @@ export function BaziForm() {
       const response = await fetch("/api/generate-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "report", birth: birthInput }),
+        body: JSON.stringify({
+          action: "report",
+          birth: birthInput,
+          ...(focusLiuYue ? { focusLiuYue } : {}),
+        }),
       });
       if (!response.ok) throw new Error("report request failed");
 
@@ -378,7 +317,11 @@ export function BaziForm() {
               公历 {chart.solar.text} · 农历 {chart.lunar.text} · {chart.genderLabel} · 日主{" "}
               <span className={ELEMENT_TEXT[ganElement(chart.dayMaster)]}>{chart.dayMaster}</span>
             </p>
-            <ChartInteractive key={`${chart.solar.text}-${chart.input.gender}`} chart={chart} />
+            <ChartInteractive
+              key={`${chart.solar.text}-${chart.input.gender}`}
+              chart={chart}
+              onFocusChange={setFocusLiuYue}
+            />
             <details className="group rounded-lg border border-border/70 bg-background/60">
               <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-4 [&::-webkit-details-marker]:hidden">
                 <h3 className="font-serif text-lg">排盘规则溯源</h3>
@@ -683,8 +626,14 @@ function PillarTable({ chart }: { chart: ChartFacts }) {
   );
 }
 
-/** 排盘交互容器：统一管理大运、流年选择，驱动流月与关系图联动。 */
-function ChartInteractive({ chart }: { chart: ChartFacts }) {
+/** 排盘交互容器：统一管理大运、流年、流月选择，驱动流月与关系图联动。 */
+function ChartInteractive({
+  chart,
+  onFocusChange,
+}: {
+  chart: ChartFacts;
+  onFocusChange: (focus: { year: number; monthIndex: number }) => void;
+}) {
   const currentYear = new Date().getFullYear();
   const daYun = chart.luck.daYun.slice(0, 8);
   const initialIndex = daYun.findIndex((item) => currentYear >= item.startYear && currentYear <= item.endYear);
@@ -694,12 +643,26 @@ function ChartInteractive({ chart }: { chart: ChartFacts }) {
     if (initial && currentYear >= initial.startYear && currentYear <= initial.endYear) return currentYear;
     return initial?.startYear ?? currentYear;
   });
+  const [selectedMonthIndex, setSelectedMonthIndex] = React.useState(() =>
+    selectedYear === currentYear ? currentMonthIndex() : 0,
+  );
+
+  React.useEffect(() => {
+    onFocusChange({ year: selectedYear, monthIndex: selectedMonthIndex });
+  }, [onFocusChange, selectedMonthIndex, selectedYear]);
 
   function selectDaYun(index: number) {
     setSelectedIndex(index);
     const target = daYun[index];
     if (!target) return;
-    setSelectedYear(currentYear >= target.startYear && currentYear <= target.endYear ? currentYear : target.startYear);
+    const nextYear = currentYear >= target.startYear && currentYear <= target.endYear ? currentYear : target.startYear;
+    setSelectedYear(nextYear);
+    setSelectedMonthIndex(nextYear === currentYear ? currentMonthIndex() : 0);
+  }
+
+  function selectYear(year: number) {
+    setSelectedYear(year);
+    setSelectedMonthIndex(year === currentYear ? currentMonthIndex() : 0);
   }
 
   return (
@@ -711,9 +674,11 @@ function ChartInteractive({ chart }: { chart: ChartFacts }) {
         selectedIndex={selectedIndex}
         onSelectIndex={selectDaYun}
         selectedYear={selectedYear}
-        onSelectYear={setSelectedYear}
+        onSelectYear={selectYear}
+        selectedMonthIndex={selectedMonthIndex}
+        onSelectMonth={setSelectedMonthIndex}
       />
-      <RelationDiagram chart={chart} flowYear={selectedYear} />
+      <RelationDiagram chart={chart} flowYear={selectedYear} flowMonthIndex={selectedMonthIndex} />
     </div>
   );
 }
@@ -725,10 +690,21 @@ interface DaYunStripProps {
   onSelectIndex: (index: number) => void;
   selectedYear: number;
   onSelectYear: (year: number) => void;
+  selectedMonthIndex: number;
+  onSelectMonth: (index: number) => void;
 }
 
-/** 横向 8 步大运；点击大运切换流年，点击流年展开十二流月。 */
-function DaYunStrip({ chart, daYun, selectedIndex, onSelectIndex, selectedYear, onSelectYear }: DaYunStripProps) {
+/** 横向 8 步大运；点击大运切换流年，点击流年展开十二流月，点击流月联动图示。 */
+function DaYunStrip({
+  chart,
+  daYun,
+  selectedIndex,
+  onSelectIndex,
+  selectedYear,
+  onSelectYear,
+  selectedMonthIndex,
+  onSelectMonth,
+}: DaYunStripProps) {
   const currentYear = new Date().getFullYear();
   const selected = daYun[selectedIndex] ?? daYun[0];
   if (!selected) return null;
@@ -839,36 +815,66 @@ function DaYunStrip({ chart, daYun, selectedIndex, onSelectIndex, selectedYear, 
           <p className="text-[10px] tracking-[0.2em] text-amber-500/60">
             流月 · {selectedYear} {flow.text}
           </p>
-          <p className="text-[10px] text-zinc-500">点击上方流年切换 · 高亮为当前月令</p>
+          <p className="text-[10px] text-zinc-500">点击流年切换 · 点击流月联动右侧图示</p>
         </div>
         <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-6">
           {months.map((month, index) => {
             const shiShen = shiShenOf(chart.dayMaster, month.gan);
             const hits = shenShaForBranch(shenShaBase, month.zhi);
-            const isActive = selectedYear === currentYear && index === activeMonth;
+            const isCurrent = selectedYear === currentYear && index === activeMonth;
+            const isSelected = index === selectedMonthIndex;
             return (
-              <div
+              <button
                 key={`${selectedYear}-${month.label}`}
+                type="button"
+                onClick={() => onSelectMonth(index)}
+                aria-pressed={isSelected}
                 title={`${selectedYear} 年${month.label} ${month.ganZhi} · 十神：${shiShen}\n${
                   SHI_SHEN_TIPS[shiShen] ?? ""
                 }\n${shenShaTitle(hits)}`}
-                className={`cursor-help rounded-md border px-1 py-1.5 text-center transition-colors ${
-                  isActive
+                className={`cursor-pointer rounded-md border px-1 py-1.5 text-center transition-colors ${
+                  isSelected
                     ? "border-amber-400/70 bg-amber-500/15 ring-1 ring-amber-400/25"
                     : "border-amber-500/10 bg-white/[0.02] hover:border-amber-400/30 hover:bg-amber-500/[0.05]"
                 }`}
               >
-                <p className={`text-[10px] ${isActive ? "text-amber-300" : "text-zinc-500"}`}>{month.label}</p>
-                <p
-                  className={`font-serif text-sm tracking-widest ${isActive ? "text-amber-200" : "text-zinc-200"}`}
-                >
+                <p className={`text-[10px] ${isSelected ? "text-amber-300" : "text-zinc-500"}`}>
+                  {month.label}
+                  {isCurrent ? <span className="ml-0.5 text-amber-400">今</span> : null}
+                </p>
+                <p className={`font-serif text-sm tracking-widest ${isSelected ? "text-amber-200" : "text-zinc-200"}`}>
                   {month.ganZhi}
                 </p>
                 <p className="mt-0.5 whitespace-nowrap text-[9px] leading-3 text-zinc-500">{shiShen}</p>
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-0.5">
+                  {hits.length === 0 ? (
+                    <span className="text-[9px] leading-3 text-zinc-600">无神煞</span>
+                  ) : (
+                    <>
+                      {hits.slice(0, 3).map((hit) => (
+                        <span
+                          key={hit.name}
+                          className={`rounded border border-amber-500/15 bg-white/[0.03] px-1 text-[9px] leading-3 ${ELEMENT_TEXT[hit.element]}`}
+                        >
+                          {hit.name}
+                        </span>
+                      ))}
+                      {hits.length > 3 ? (
+                        <span className="text-[9px] leading-3 text-zinc-500">+{hits.length - 3}</span>
+                      ) : null}
+                    </>
+                  )}
+                </div>
                 <p className="mt-0.5 text-[9px] leading-3">
-                  {isActive ? <span className="text-amber-300">当前月令</span> : <span className="text-transparent">·</span>}
+                  {isSelected ? (
+                    <span className="text-amber-300">已选</span>
+                  ) : isCurrent ? (
+                    <span className="text-amber-500/80">当前月令</span>
+                  ) : (
+                    <span className="text-transparent">·</span>
+                  )}
                 </p>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -963,6 +969,8 @@ interface RelationNode {
   y: number;
   element: Element;
   flow: boolean;
+  /** 流年、流月天干附带的十神。 */
+  shiShen?: string;
 }
 
 interface RelationLine {
@@ -1001,13 +1009,26 @@ function collectZhiRelations(lines: RelationLine[], a: RelationNode, b: Relation
   if (isZhiXing(zhiA, zhiB)) pushRelation(lines, a, b, "刑", isFlow);
 }
 
-/** 干支关系图示：原生 SVG 绘制刑冲合害连线，流年互动使用虚线。 */
-function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: number }) {
+/** 干支关系图示：原生 SVG 绘制刑冲合害连线，流年、流月互动使用虚线。 */
+function RelationDiagram({
+  chart,
+  flowYear,
+  flowMonthIndex,
+}: {
+  chart: ChartFacts;
+  flowYear: number;
+  flowMonthIndex: number;
+}) {
   const flow = yearGanZhi(flowYear);
-  const NATAL_X = [100, 300, 500, 700] as const;
-  const GAN_Y = 96;
-  const ZHI_Y = 332;
+  const months = liuYueOf(flow.gan);
+  const flowMonth = months[flowMonthIndex] ?? months[0];
+  if (!flowMonth) return null;
+
+  const NATAL_X = [90, 290, 490, 690] as const;
+  const GAN_Y = 150;
+  const ZHI_Y = 390;
   const FLOW_X = 880;
+  const MONTH_X = 1080;
 
   const ganNodes: RelationNode[] = PILLAR_ORDER.map((key, index) => {
     const pillar = chart.pillars[key];
@@ -1015,7 +1036,7 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
       id: `${key}-gan`,
       char: pillar.gan,
       label: key === "day" ? "日主" : `${pillar.label.slice(0, 1)}干`,
-      x: NATAL_X[index] ?? 100,
+      x: NATAL_X[index] ?? 90,
       y: GAN_Y,
       element: ganElement(pillar.gan),
       flow: false,
@@ -1027,7 +1048,7 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
       id: `${key}-zhi`,
       char: pillar.zhi,
       label: `${pillar.label.slice(0, 1)}支`,
-      x: NATAL_X[index] ?? 100,
+      x: NATAL_X[index] ?? 90,
       y: ZHI_Y,
       element: zhiElement(pillar.zhi),
       flow: false,
@@ -1041,6 +1062,7 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
     y: GAN_Y,
     element: ganElement(flow.gan),
     flow: true,
+    shiShen: shiShenOf(chart.dayMaster, flow.gan),
   };
   const flowZhiNode: RelationNode = {
     id: "flow-zhi",
@@ -1049,6 +1071,25 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
     x: FLOW_X,
     y: ZHI_Y,
     element: zhiElement(flow.zhi),
+    flow: true,
+  };
+  const flowMonthGanNode: RelationNode = {
+    id: "flow-month-gan",
+    char: flowMonth.gan,
+    label: "流月干",
+    x: MONTH_X,
+    y: GAN_Y,
+    element: ganElement(flowMonth.gan),
+    flow: true,
+    shiShen: shiShenOf(chart.dayMaster, flowMonth.gan),
+  };
+  const flowMonthZhiNode: RelationNode = {
+    id: "flow-month-zhi",
+    char: flowMonth.zhi,
+    label: "流月支",
+    x: MONTH_X,
+    y: ZHI_Y,
+    element: zhiElement(flowMonth.zhi),
     flow: true,
   };
 
@@ -1063,27 +1104,33 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
       if (zhiA && zhiB) collectZhiRelations(lines, zhiA, zhiB);
     }
     const ganA = ganNodes[i];
-    if (ganA) collectGanRelations(lines, ganA, flowGanNode, true);
+    if (ganA) {
+      collectGanRelations(lines, ganA, flowGanNode, true);
+      collectGanRelations(lines, ganA, flowMonthGanNode, true);
+    }
     const zhiA = zhiNodes[i];
-    if (zhiA) collectZhiRelations(lines, zhiA, flowZhiNode, true);
+    if (zhiA) {
+      collectZhiRelations(lines, zhiA, flowZhiNode, true);
+      collectZhiRelations(lines, zhiA, flowMonthZhiNode, true);
+    }
   }
 
-  const allNodes = [...ganNodes, ...zhiNodes, flowGanNode, flowZhiNode];
+  const allNodes = [...ganNodes, ...zhiNodes, flowGanNode, flowZhiNode, flowMonthGanNode, flowMonthZhiNode];
 
   return (
     <div className="rounded-xl border border-amber-500/25 bg-[#131009] p-3 sm:p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
         <h3 className="font-serif text-base text-amber-100/90">干支关系图示</h3>
         <p className="text-[11px] text-amber-500/60">
-          四柱刑冲合害 · 流年 {flowYear} {flow.text}
+          四柱刑冲合害 · 流年 {flowYear} {flow.text} · 流月 {flowMonth.label} {flowMonth.ganZhi}
         </p>
       </div>
       <div className="mt-2 overflow-x-auto pb-1">
         <svg
-          viewBox="0 0 960 420"
+          viewBox="0 0 1180 560"
           role="img"
-          aria-label={`四柱干支刑冲合害关系图，共 ${lines.length} 组关联`}
-          className="h-auto w-full min-w-[620px]"
+          aria-label={`四柱干支刑冲合害关系图，含流年 ${flow.text} 与流月 ${flowMonth.ganZhi}，共 ${lines.length} 组关联`}
+          className="h-auto w-full min-w-[760px]"
         >
           <text x="22" y={GAN_Y + 4} fontSize="13" fill="#b45309" letterSpacing="2">
             天干
@@ -1092,18 +1139,24 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
             地支
           </text>
           <text x={FLOW_X} y="30" textAnchor="middle" fontSize="12" fill="#fbbf24">
-            流年 {flowYear}
+            流年 {flowYear} {flow.text}
+          </text>
+          <text x={MONTH_X} y="30" textAnchor="middle" fontSize="12" fill="#fbbf24">
+            流月 {flowMonth.ganZhi}
           </text>
 
           {lines.length === 0 ? (
-            <text x="480" y="214" textAnchor="middle" fontSize="13" fill="#71717a">
+            <text x="590" y="270" textAnchor="middle" fontSize="13" fill="#71717a">
               四柱之间未见显著刑冲合害
             </text>
           ) : null}
 
           {lines.map((line, index) => {
-            const above = line.a.y < 200;
-            const magnitude = Math.min(54 + index * 12, 78);
+            const above = line.a.y < 300;
+            const isMonthLine = line.a.id.startsWith("flow-month") || line.b.id.startsWith("flow-month");
+            const magnitude = isMonthLine
+              ? 120 + (index % 4) * 8
+              : Math.min(54 + index * 12, 78);
             const cx = (line.a.x + line.b.x) / 2;
             const cy = line.a.y + (above ? -magnitude : magnitude);
             const mx = (line.a.x + 2 * cx + line.b.x) / 4;
@@ -1152,7 +1205,7 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
               />
               <text
                 x={node.x}
-                y={node.y + 12}
+                y={node.y + (node.shiShen ? 8 : 12)}
                 textAnchor="middle"
                 fontSize="30"
                 fill={ELEMENT_FILL[node.element]}
@@ -1160,6 +1213,11 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
               >
                 {node.char}
               </text>
+              {node.shiShen ? (
+                <text x={node.x} y={node.y + 27} textAnchor="middle" fontSize="10" fill="#fcd34d" opacity="0.9">
+                  {node.shiShen}
+                </text>
+              ) : null}
               <text
                 x={node.x}
                 y={node.y + 52}
@@ -1186,7 +1244,7 @@ function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: num
         ))}
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden className="inline-block w-6 border-t border-dashed border-amber-300" />
-          流年互动
+          流年/流月互动
         </span>
         <span className="text-zinc-500">共 {lines.length} 组</span>
       </div>

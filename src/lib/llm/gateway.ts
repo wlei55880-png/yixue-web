@@ -1,4 +1,6 @@
 import { COMPLIANCE_RULES, scanCompliance, type ComplianceCategory } from "@/lib/compliance";
+import { liuYueOf, yearGanZhi } from "@/lib/domain/liuyue";
+import { shenShaForBranch } from "@/lib/domain/shensha";
 import { ELEMENT_CONTROLS, ELEMENT_GENERATES, ganElement, zhiElement } from "@/lib/domain/wuxing";
 import { groupRuleHits } from "@/lib/engines/rules";
 import {
@@ -6,11 +8,12 @@ import {
   REPORT_QUEUE_MESSAGE,
   REPORT_TITLE,
   type BaziReport,
+  type LiuYueFocus,
   type ReportRequest,
   type SafetyReplacement,
 } from "@/lib/llm/report-types";
 import { CONFLICT_GROUP_LABELS } from "@/lib/rules/bazi";
-import { GAN_VALUES, ZHI_VALUES, type ChartFacts, type Element, type PillarKey } from "@/lib/schemas/chart-facts";
+import type { ChartFacts, Element, PillarKey } from "@/lib/schemas/chart-facts";
 import type { RuleConfidence, RuleHit } from "@/lib/schemas/rule-card";
 
 export { REPORT_CLOSING, REPORT_QUEUE_MESSAGE } from "@/lib/llm/report-types";
@@ -29,6 +32,7 @@ export const REPORT_SYSTEM_PROMPT = `你是一位融合传统子平八字、盲�
 4. 语言风格：古朴、克制、有画面感；用现代心理学词汇解释传统术语，但不贴诊断标签，不替代心理咨询。
 5. 请结合命盘中的神煞（如天乙贵人、桃花等）和十二长生状态，进行综合解读。
 6. 输出为纯 Markdown，不要代码块，不要额外的前言或结语标题。
+7. 若输入包含 focusLiuYue（用户选中的流月），只解读该流月的干支、十神、神煞及与原局的冲合；不得自行推算或增补其他月份。
 
 【内容结构】（严格按此格式输出）
 # 第一篇：原局剖析·生命蓝图与性格底色
@@ -43,6 +47,8 @@ export const REPORT_SYSTEM_PROMPT = `你是一位融合传统子平八字、盲�
 （结合当前大运，分析这十年的事业、财务与情感主旋律。）
 ## 2. 流年震荡与破局点
 （结合今年流年，指出健康、职场摩擦、财务风险的观察点，给出务实建议，不使用恐吓式表达。）
+## 3. 当前流月观察
+（仅在输入包含 focusLiuYue 时输出：结合流月干支、十神、神煞及与原局四柱的冲合，给出当月可执行的节奏建议；未提供则整节省略。）
 # 第三篇：宗师寄语
 （结合《道德经》等国学经典，给予有文采、有力量的人生建议，把命局中的张力转化为成长特质。）
 
@@ -145,6 +151,15 @@ const SIX_CLASH_PAIRS = [
   ["巳", "亥"],
 ] as const;
 
+const SIX_COMBINE_PAIRS = [
+  ["子", "丑"],
+  ["寅", "亥"],
+  ["卯", "戌"],
+  ["辰", "酉"],
+  ["巳", "申"],
+  ["午", "未"],
+] as const;
+
 const CATEGORY_REPLACEMENTS: Record<ComplianceCategory, string> = {
   absolute_prediction: "可能",
   fear_inducement: "注意",
@@ -223,12 +238,6 @@ function relationTone(targetElement: Element, dayElement: Element): string {
   return "压力与规则感上升，需要明确优先级、边界与恢复方式";
 }
 
-function yearGanZhi(year: number): { gan: string; zhi: string } {
-  const gan = GAN_VALUES[(((year - 4) % 10) + 10) % 10] ?? "甲";
-  const zhi = ZHI_VALUES[(((year - 4) % 12) + 12) % 12] ?? "子";
-  return { gan, zhi };
-}
-
 function dominantGroup(chart: ChartFacts): TenGodGroup {
   const counts: Record<TenGodGroup, number> = { 比劫: 0, 食伤: 0, 财星: 0, 官杀: 0, 印星: 0 };
   for (const key of PILLAR_ORDER) {
@@ -247,6 +256,65 @@ function currentDaYun(chart: ChartFacts, year: number) {
   );
 }
 
+interface LiuYueFacts {
+  year: number;
+  yearGanZhi: string;
+  monthIndex: number;
+  monthLabel: string;
+  ganZhi: string;
+  gan: string;
+  zhi: string;
+  shiShen: string;
+  shenSha: { name: string; basedOn: string }[];
+  relationNotes: string[];
+}
+
+/** 服务端根据年份与月序重新推演流月，前端只提交选择，不提交命理结论。 */
+function focusLiuYueFacts(chart: ChartFacts, focus: LiuYueFocus): LiuYueFacts | null {
+  const year = yearGanZhi(focus.year);
+  const month = liuYueOf(year.gan)[focus.monthIndex];
+  if (!month) return null;
+
+  const relationNotes: string[] = [];
+  for (const key of PILLAR_ORDER) {
+    const pillar = chart.pillars[key];
+    const clash = SIX_CLASH_PAIRS.find(
+      ([left, right]) =>
+        (month.zhi === left && pillar.zhi === right) || (month.zhi === right && pillar.zhi === left),
+    );
+    if (clash) relationNotes.push(`${pillar.label.replace("柱", "支")}${pillar.zhi}与流月${month.zhi}相冲`);
+    const combine = SIX_COMBINE_PAIRS.find(
+      ([left, right]) =>
+        (month.zhi === left && pillar.zhi === right) || (month.zhi === right && pillar.zhi === left),
+    );
+    if (combine) relationNotes.push(`${pillar.label.replace("柱", "支")}${pillar.zhi}与流月${month.zhi}相合`);
+  }
+
+  const shenSha = shenShaForBranch(
+    {
+      dayGan: chart.dayMaster,
+      yearGan: chart.pillars.year.gan,
+      dayZhi: chart.pillars.day.zhi,
+      yearZhi: chart.pillars.year.zhi,
+      dayXunKong: chart.kongWang.day.branches,
+    },
+    month.zhi,
+  );
+
+  return {
+    year: focus.year,
+    yearGanZhi: year.text,
+    monthIndex: focus.monthIndex,
+    monthLabel: month.label,
+    ganZhi: month.ganZhi,
+    gan: month.gan,
+    zhi: month.zhi,
+    shiShen: tenGodOf(chart.dayMaster, month.gan),
+    shenSha: shenSha.map((hit) => ({ name: hit.name, basedOn: hit.basedOn })),
+    relationNotes,
+  };
+}
+
 function evidenceLine(hits: readonly RuleHit[]): string {
   if (hits.length === 0) return "本次排盘未命中当前知识库规则，以下分析只保留排盘事实层面的观察。";
   const cited = hits
@@ -260,7 +328,7 @@ function evidenceLine(hits: readonly RuleHit[]): string {
  * 本地模板报告生成器（mock provider）。
  * 按同一份 System Prompt 结构输出 Markdown；不发起任何外部请求，相同输入得到相同输出。
  */
-export function generateBaziReport({ chart, hits, currentYear }: ReportRequest): BaziReport {
+export function generateBaziReport({ chart, hits, currentYear, focusLiuYue }: ReportRequest): BaziReport {
   const year = currentYear ?? new Date().getFullYear();
   const groups = groupRuleHits(hits);
   const dayElement = ganElement(chart.dayMaster);
@@ -388,6 +456,38 @@ export function generateBaziReport({ chart, hits, currentYear }: ReportRequest):
     "",
   );
 
+  const focus = focusLiuYue ? focusLiuYueFacts(chart, focusLiuYue) : null;
+  if (focus) {
+    const focusGroup = TEN_GOD_GROUP[focus.shiShen] ?? "比劫";
+    const shenShaText =
+      focus.shenSha.length > 0
+        ? focus.shenSha.map((hit) => `${hit.name}（${hit.basedOn}）`).join("、")
+        : "未见核心神煞";
+    lines.push("## 3. 当前流月观察", "");
+    lines.push(
+      `${focus.year} 年${focus.monthLabel}为${focus.ganZhi}，天干${focus.gan}为${focus.shiShen}，本月主题偏向${TEN_GOD_LIFE[focus.shiShen] ?? "自我调整与外部适应"}；地支${focus.zhi}${
+        focus.relationNotes.length > 0
+          ? `，与原局${focus.relationNotes.join("，")}`
+          : "，与原局四柱未见明显冲合"
+      }。神煞方面：${shenShaText}。`,
+      "",
+    );
+    lines.push(
+      `当月节奏建议：${
+        focusGroup === "官杀"
+          ? "外部要求与考核感容易集中出现，把任务拆成优先级清单，先保交付再谈表现，避免把压力带进亲密关系。"
+          : focusGroup === "财星"
+            ? "机会与支出容易同时增多，适合先做预算再决定是否投入，重要合作把口头约定落成文字。"
+            : focusGroup === "食伤"
+              ? "表达与创造欲增强，适合输出方案与作品，但沟通时留一点缓冲，避免言辞过直带来摩擦。"
+              : focusGroup === "印星"
+                ? "学习与休整的能量增强，适合进修、复盘与修复关系，同时留意别用拖延替代真正的休息。"
+                : "同辈与协作主题增强，适合明确分工与利益边界，避免在人情往来中过度消耗。"
+      }把流月当作一次短周期复盘：月初定一个可完成的小目标，月中检查精力与预算，月末留出恢复时间。`,
+      "",
+    );
+  }
+
   lines.push("# 第三篇：宗师寄语", "");
   const quote =
     strong !== undefined
@@ -448,13 +548,17 @@ function resolveChatEndpoint(baseUrl: string): string {
   return trimmed.endsWith("/chat/completions") ? trimmed : `${trimmed}/chat/completions`;
 }
 
-function buildLlmUserPrompt({ chart, hits, currentYear }: ReportRequest): string {
+function buildLlmUserPrompt({ chart, hits, currentYear, focusLiuYue }: ReportRequest): string {
   const year = currentYear ?? new Date().getFullYear();
+  const focus = focusLiuYue ? focusLiuYueFacts(chart, focusLiuYue) : null;
   return [
     `当前年份：${year} 年。请严格依据以下排盘事实与规则命中生成三篇报告。`,
+    focus
+      ? `用户当前选中的流月为 ${focus.year} 年${focus.monthLabel}（${focus.ganZhi}）。请在第二篇增加「## 3. 当前流月观察」，只依据 focusLiuYue 事实解读该月的十神、神煞与原局冲合，不得自行推算或编造其他月份。`
+      : "输入未提供 focusLiuYue，不要自行推算流月，第二篇只写当前大运与流年。",
     "只输出 Markdown 正文，不要代码块，不要额外的前言或说明。",
     "排盘事实与规则命中（JSON）：",
-    JSON.stringify({ chart, hits }),
+    JSON.stringify({ chart, hits, focusLiuYue: focus }),
   ].join("\n\n");
 }
 

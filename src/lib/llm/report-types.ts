@@ -1,11 +1,20 @@
 import type { BaziRequest, ChartFacts } from "@/lib/schemas/chart-facts";
 import type { RuleConfidence, RuleHit, RuleSchool } from "@/lib/schemas/rule-card";
 
+/** 用户当前选中的流月，由前端只提交年份与月序，服务端重新推演干支。 */
+export interface LiuYueFocus {
+  year: number;
+  /** 0 = 正月（寅月）。 */
+  monthIndex: number;
+}
+
 export interface ReportRequest {
   chart: ChartFacts;
   hits: readonly RuleHit[];
   /** 用于岁运推演，默认取当前年份；测试可传入固定年份。 */
   currentYear?: number;
+  /** 可选：用户点击选中的流月，用于追加当月运势观察。 */
+  focusLiuYue?: LiuYueFocus;
 }
 
 export interface SafetyReplacement {
@@ -68,5 +77,5 @@ export interface ApiErrorResponse {
 }
 
 export type GenerateReportRequest =
-  | { action: "chart"; birth: BaziRequest; currentYear?: number }
-  | { action: "report"; birth: BaziRequest; currentYear?: number };
+  | { action: "chart"; birth: BaziRequest; currentYear?: number; focusLiuYue?: LiuYueFocus }
+  | { action: "report"; birth: BaziRequest; currentYear?: number; focusLiuYue?: LiuYueFocus };
