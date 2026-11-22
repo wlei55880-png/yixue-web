@@ -48,7 +48,23 @@
         "shiShenZhi": [
           "伤官"
         ],
-        "diShi": "死"
+        "diShi": "死",
+        "naYin": {
+          "name": "城头土",
+          "element": "土"
+        },
+        "shenSha": [
+          {
+            "name": "天乙贵人",
+            "element": "土",
+            "basedOn": "日干壬"
+          },
+          {
+            "name": "将星",
+            "element": "金",
+            "basedOn": "年支卯"
+          }
+        ]
       },
       "month": {
         "key": "month",
@@ -67,7 +83,23 @@
           "劫财",
           "正印"
         ],
-        "diShi": "衰"
+        "diShi": "衰",
+        "naYin": {
+          "name": "涧下水",
+          "element": "水"
+        },
+        "shenSha": [
+          {
+            "name": "太极贵人",
+            "element": "土",
+            "basedOn": "年干己"
+          },
+          {
+            "name": "寡宿",
+            "element": "土",
+            "basedOn": "年支卯"
+          }
+        ]
       },
       "day": {
         "key": "day",
@@ -86,7 +118,23 @@
           "伤官",
           "劫财"
         ],
-        "diShi": "墓"
+        "diShi": "墓",
+        "naYin": {
+          "name": "长流水",
+          "element": "水"
+        },
+        "shenSha": [
+          {
+            "name": "太极贵人",
+            "element": "土",
+            "basedOn": "年干己"
+          },
+          {
+            "name": "华盖",
+            "element": "土",
+            "basedOn": "日支辰"
+          }
+        ]
       },
       "hour": {
         "key": "hour",
@@ -105,7 +153,18 @@
           "正印",
           "正财"
         ],
-        "diShi": "冠带"
+        "diShi": "冠带",
+        "naYin": {
+          "name": "钗钏金",
+          "element": "金"
+        },
+        "shenSha": [
+          {
+            "name": "太极贵人",
+            "element": "土",
+            "basedOn": "年干己"
+          }
+        ]
       }
     },
     "wuXing": {
@@ -129,6 +188,20 @@
         "土": 7,
         "金": 3,
         "水": 3
+      }
+    },
+    "kongWang": {
+      "day": {
+        "branches": [
+          "午",
+          "未"
+        ]
+      },
+      "year": {
+        "branches": [
+          "申",
+          "酉"
+        ]
       }
     },
     "luck": {

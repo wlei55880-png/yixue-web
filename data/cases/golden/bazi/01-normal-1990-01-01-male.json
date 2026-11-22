@@ -52,7 +52,23 @@
           "偏财",
           "食神"
         ],
-        "diShi": "临官"
+        "diShi": "临官",
+        "naYin": {
+          "name": "大林木",
+          "element": "木"
+        },
+        "shenSha": [
+          {
+            "name": "禄神",
+            "element": "木",
+            "basedOn": "日干丙"
+          },
+          {
+            "name": "亡神",
+            "element": "水",
+            "basedOn": "日支寅"
+          }
+        ]
       },
       "month": {
         "key": "month",
@@ -67,7 +83,23 @@
         "shiShenZhi": [
           "正官"
         ],
-        "diShi": "胎"
+        "diShi": "胎",
+        "naYin": {
+          "name": "涧下水",
+          "element": "水"
+        },
+        "shenSha": [
+          {
+            "name": "天乙贵人",
+            "element": "土",
+            "basedOn": "年干己"
+          },
+          {
+            "name": "灾煞",
+            "element": "水",
+            "basedOn": "日支寅"
+          }
+        ]
       },
       "day": {
         "key": "day",
@@ -86,7 +118,23 @@
           "比肩",
           "食神"
         ],
-        "diShi": "长生"
+        "diShi": "长生",
+        "naYin": {
+          "name": "炉中火",
+          "element": "火"
+        },
+        "shenSha": [
+          {
+            "name": "国印贵人",
+            "element": "金",
+            "basedOn": "年干己"
+          },
+          {
+            "name": "劫煞",
+            "element": "金",
+            "basedOn": "年支巳"
+          }
+        ]
       },
       "hour": {
         "key": "hour",
@@ -103,7 +151,28 @@
           "劫财",
           "伤官"
         ],
-        "diShi": "帝旺"
+        "diShi": "帝旺",
+        "naYin": {
+          "name": "沙中金",
+          "element": "金"
+        },
+        "shenSha": [
+          {
+            "name": "羊刃",
+            "element": "金",
+            "basedOn": "日干丙"
+          },
+          {
+            "name": "桃花",
+            "element": "水",
+            "basedOn": "年支巳"
+          },
+          {
+            "name": "将星",
+            "element": "金",
+            "basedOn": "日支寅"
+          }
+        ]
       }
     },
     "wuXing": {
@@ -127,6 +196,20 @@
         "土": 4,
         "金": 1,
         "水": 2
+      }
+    },
+    "kongWang": {
+      "day": {
+        "branches": [
+          "戌",
+          "亥"
+        ]
+      },
+      "year": {
+        "branches": [
+          "戌",
+          "亥"
+        ]
       }
     },
     "luck": {

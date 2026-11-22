@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import ReactMarkdown from "react-markdown";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ganElement, zhiElement } from "@/lib/domain/wuxing";
 import {
   REPORT_CLOSING,
   REPORT_QUEUE_MESSAGE,
@@ -13,9 +15,18 @@ import {
   type PublicBaziReport,
   type PublicRuleHit,
 } from "@/lib/llm/report-types";
-import type { Gender, PillarKey } from "@/lib/schemas/chart-facts";
+import type { ChartFacts, Element, Gender, PillarKey } from "@/lib/schemas/chart-facts";
 
 const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
+
+/** 深色黑金表盘的五行配色。 */
+const ELEMENT_TEXT: Record<Element, string> = {
+  木: "text-emerald-300",
+  火: "text-rose-300",
+  土: "text-amber-300",
+  金: "text-zinc-200",
+  水: "text-sky-300",
+};
 
 type BirthInput = {
   year: number;
@@ -132,7 +143,7 @@ export function BaziForm() {
       <CardHeader className="gap-2">
         <CardTitle className="font-serif text-xl">快速排盘</CardTitle>
         <p className="text-sm leading-6 text-muted-foreground">
-          输入公历出生时间，立即得到四柱、十神、藏干、十二长生与大运，并匹配知识库规则。时间按钟表时间计算，暂未换算真太阳时。
+          输入公历出生时间，立即得到四柱、十神、藏干、十二长生、神煞、纳音、空亡与大运，并匹配知识库规则。时间按钟表时间计算，暂未换算真太阳时。
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -174,32 +185,10 @@ export function BaziForm() {
         {chart ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              公历 {chart.solar.text} · 农历 {chart.lunar.text} · {chart.genderLabel} · 日主 {chart.dayMaster}
+              公历 {chart.solar.text} · 农历 {chart.lunar.text} · {chart.genderLabel} · 日主{" "}
+              <span className={ELEMENT_TEXT[ganElement(chart.dayMaster)]}>{chart.dayMaster}</span>
             </p>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
-              {PILLAR_ORDER.map((key) => {
-                const pillar = chart.pillars[key];
-                return (
-                  <div key={key} className="rounded-lg border border-border/70 bg-background/60 p-3 sm:p-4">
-                    <p className="text-xs tracking-widest text-muted-foreground">{pillar.label}</p>
-                    <p className="mt-1 font-serif text-2xl tracking-[0.15em] sm:tracking-[0.2em]">{pillar.ganZhi}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      天干十神：<span className="text-foreground">{pillar.shiShenGan}</span>
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      地支藏干：
-                      <span className="text-foreground">
-                        {pillar.hideGan.length > 0
-                          ? pillar.hideGan
-                              .map((gan, index) => `${gan}（${pillar.shiShenZhi[index] ?? "—"}）`)
-                              .join("、")
-                          : "—"}
-                      </span>
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
+            <PillarTable chart={chart} />
             <div className="rounded-lg border border-border/70 bg-background/60 p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="font-serif text-lg">命理分析（规则命中）</h3>
@@ -298,38 +287,198 @@ function buildQueuedReport(): PublicBaziReport {
 
 function ReportMarkdown({ markdown }: { markdown: string }) {
   return (
-    <>
-      {markdown.split("\n").map((line, index) => {
-        const key = `${index}-${line.slice(0, 12)}`;
-        if (line.startsWith("# ")) {
-          return (
-            <h4 key={key} className="border-b border-primary/20 pb-2 pt-3 font-serif text-xl tracking-wide">
-              {line.slice(2)}
-            </h4>
-          );
-        }
-        if (line.startsWith("## ")) {
-          return (
-            <h5 key={key} className="pt-1 font-serif text-base">
-              {line.slice(3)}
-            </h5>
-          );
-        }
-        if (line === REPORT_CLOSING) {
-          return (
-            <p key={key} className="border-t border-border/60 pt-3 text-xs leading-6 text-muted-foreground">
-              {line}
-            </p>
-          );
-        }
-        if (line.trim() === "") return null;
-        return (
-          <p key={key} className="indent-8 font-serif text-[15px] leading-8 text-foreground/90 sm:text-base">
-            {line}
+    <div className="space-y-3">
+      <ReactMarkdown
+        components={{
+          h1: ({ children }) => (
+            <h4 className="border-b border-primary/20 pb-2 pt-3 font-serif text-xl tracking-wide">{children}</h4>
+          ),
+          h2: ({ children }) => <h5 className="pt-1 font-serif text-base">{children}</h5>,
+          h3: ({ children }) => (
+            <h6 className="pt-1 font-serif text-sm tracking-wide text-primary/90">{children}</h6>
+          ),
+          p: ({ children }) =>
+            typeof children === "string" && children.trim() === REPORT_CLOSING ? (
+              <p className="border-t border-border/60 pt-3 text-xs leading-6 text-muted-foreground">{children}</p>
+            ) : (
+              <p className="indent-8 font-serif text-[15px] leading-8 text-foreground/90 sm:text-base">{children}</p>
+            ),
+          ul: ({ children }) => (
+            <ul className="list-disc space-y-1 pl-6 font-serif text-[15px] leading-7 text-foreground/90">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal space-y-1 pl-6 font-serif text-[15px] leading-7 text-foreground/90">
+              {children}
+            </ol>
+          ),
+          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+        }}
+      >
+        {markdown}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+function PillarCell({ children, day }: { children: React.ReactNode; day: boolean }) {
+  return <td className={`min-w-0 px-1 py-2 align-middle sm:px-2 ${day ? "bg-amber-500/[0.05]" : ""}`}>{children}</td>;
+}
+
+function PillarRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <tr>
+      <th
+        scope="row"
+        className="bg-amber-500/[0.03] px-1 py-2 text-[10px] font-normal tracking-widest text-amber-500/60 sm:text-[11px]"
+      >
+        {label}
+      </th>
+      {children}
+    </tr>
+  );
+}
+
+/** 深色黑金四柱表：天干、地支、十神、藏干、星运行、神煞。 */
+function PillarTable({ chart }: { chart: ChartFacts }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-amber-500/30 bg-[#131009] shadow-[0_22px_48px_-32px_rgba(0,0,0,0.9)]">
+      <table className="w-full table-fixed border-collapse text-center">
+        <colgroup>
+          <col className="w-10 sm:w-16" />
+          <col span={4} />
+        </colgroup>
+        <thead>
+          <tr className="border-b border-amber-500/25 bg-amber-500/[0.06]">
+            <th className="px-1 py-2 text-[10px] font-normal tracking-[0.2em] text-amber-500/60" scope="col">
+              四柱
+            </th>
+            {PILLAR_ORDER.map((key) => (
+              <th key={key} scope="col" className="px-1 py-2 font-normal">
+                <span
+                  className={`font-serif text-sm tracking-[0.15em] sm:text-base ${
+                    key === "day" ? "text-amber-300" : "text-amber-100/75"
+                  }`}
+                >
+                  {chart.pillars[key].label}
+                </span>
+                {key === "day" ? <span className="ml-1 text-[9px] text-amber-500/70">日主</span> : null}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-amber-500/15">
+          <PillarRow label="天干">
+            {PILLAR_ORDER.map((key) => {
+              const pillar = chart.pillars[key];
+              return (
+                <PillarCell key={key} day={key === "day"}>
+                  <span
+                    className={`font-serif text-2xl tracking-widest sm:text-3xl ${ELEMENT_TEXT[ganElement(pillar.gan)]}`}
+                  >
+                    {pillar.gan}
+                  </span>
+                </PillarCell>
+              );
+            })}
+          </PillarRow>
+          <PillarRow label="地支">
+            {PILLAR_ORDER.map((key) => {
+              const pillar = chart.pillars[key];
+              return (
+                <PillarCell key={key} day={key === "day"}>
+                  <span
+                    className={`font-serif text-2xl tracking-widest sm:text-3xl ${ELEMENT_TEXT[zhiElement(pillar.zhi)]}`}
+                  >
+                    {pillar.zhi}
+                  </span>
+                </PillarCell>
+              );
+            })}
+          </PillarRow>
+          <PillarRow label="十神">
+            {PILLAR_ORDER.map((key) => (
+              <PillarCell key={key} day={key === "day"}>
+                <span className="text-[10px] text-zinc-400 sm:text-xs">{chart.pillars[key].shiShenGan}</span>
+              </PillarCell>
+            ))}
+          </PillarRow>
+          <PillarRow label="藏干">
+            {PILLAR_ORDER.map((key) => {
+              const pillar = chart.pillars[key];
+              return (
+                <PillarCell key={key} day={key === "day"}>
+                  <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-[10px] leading-4 text-zinc-500">
+                    {pillar.hideGan.map((gan, index) => (
+                      <span key={`${gan}-${index}`} className="whitespace-nowrap">
+                        <span className={ELEMENT_TEXT[ganElement(gan)]}>{gan}</span>
+                        <span className="ml-0.5">{pillar.shiShenZhi[index] ?? ""}</span>
+                      </span>
+                    ))}
+                  </div>
+                </PillarCell>
+              );
+            })}
+          </PillarRow>
+          <PillarRow label="星运行">
+            {PILLAR_ORDER.map((key) => (
+              <PillarCell key={key} day={key === "day"}>
+                <span className="text-[11px] font-medium text-amber-200/90 sm:text-xs">
+                  {chart.pillars[key].diShi}
+                </span>
+              </PillarCell>
+            ))}
+          </PillarRow>
+          <PillarRow label="神煞">
+            {PILLAR_ORDER.map((key) => {
+              const pillar = chart.pillars[key];
+              return (
+                <PillarCell key={key} day={key === "day"}>
+                  {pillar.shenSha.length === 0 ? (
+                    <span className="text-[10px] text-zinc-600">—</span>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
+                      {pillar.shenSha.map((item) => (
+                        <span
+                          key={item.name}
+                          title={`${item.name} · ${item.basedOn}`}
+                          className={`text-[9px] leading-3 sm:text-[10px] ${ELEMENT_TEXT[item.element]}`}
+                        >
+                          {item.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </PillarCell>
+              );
+            })}
+          </PillarRow>
+        </tbody>
+      </table>
+      <div className="grid gap-px border-t border-amber-500/25 bg-amber-500/15 sm:grid-cols-2">
+        <div className="bg-[#131009] px-3 py-2.5">
+          <p className="text-[10px] tracking-[0.2em] text-amber-500/60">纳音</p>
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+            {PILLAR_ORDER.map((key) => {
+              const pillar = chart.pillars[key];
+              return (
+                <span key={key} className="whitespace-nowrap">
+                  <span className="text-zinc-500">{pillar.label}</span>
+                  <span className={`ml-1 ${ELEMENT_TEXT[pillar.naYin.element]}`}>{pillar.naYin.name}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+        <div className="bg-[#131009] px-3 py-2.5">
+          <p className="text-[10px] tracking-[0.2em] text-amber-500/60">空亡</p>
+          <p className="mt-1 text-[11px] text-zinc-400">
+            日柱旬空 <span className="text-amber-300">{chart.kongWang.day.branches.join("")}</span>
+            <span className="mx-2 text-amber-500/30">|</span>
+            年柱旬空 <span className="text-amber-300">{chart.kongWang.year.branches.join("")}</span>
           </p>
-        );
-      })}
-    </>
+        </div>
+      </div>
+    </div>
   );
 }
 

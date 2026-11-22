@@ -41,6 +41,23 @@ test.describe("首页与产品说明", () => {
   });
 });
 
+test.describe("专业星盘表格", () => {
+  test("默认排盘展示星运行、神煞、纳音与空亡", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "排盘" }).click();
+
+    await expect(page.getByText("星运行", { exact: true })).toBeVisible();
+    await expect(page.getByText("神煞", { exact: true })).toBeVisible();
+    await expect(page.getByText("纳音", { exact: true })).toBeVisible();
+    await expect(page.getByText("空亡", { exact: true })).toBeVisible();
+    await expect(page.getByText("天乙贵人")).toBeVisible();
+    await expect(page.getByText("将星")).toBeVisible();
+    await expect(page.getByText("大林木")).toBeVisible();
+    await expect(page.getByText("日柱旬空 戌亥")).toBeVisible();
+  });
+});
+
 test.describe("规则命中面板", () => {
   test("默认排盘展示命中的规则卡", async ({ page }) => {
     await page.goto("/");
@@ -122,6 +139,8 @@ test.describe("规则命中面板", () => {
       "稳中求进，先搭系统再谈扩张。",
       "## 2. 流年震荡与破局点",
       "把变化拆成可执行清单。",
+      "### 破局提示",
+      "先处理最重要的三件事。",
       "# 第三篇：宗师寄语",
       "先安顿身心，再谈远方。",
       closing,
@@ -159,6 +178,7 @@ test.describe("规则命中面板", () => {
     await expect(report.getByRole("heading", { name: "AI 智能解读报告" })).toBeVisible();
     await expect(report.getByRole("heading", { name: "第一篇：原局剖析·生命蓝图与性格底色" })).toBeVisible();
     await expect(report.getByRole("heading", { name: "第二篇：岁运推演·时空环境与吉凶触发" })).toBeVisible();
+    await expect(report.getByRole("heading", { name: "破局提示" })).toBeVisible();
     await expect(report.getByRole("heading", { name: "第三篇：宗师寄语" })).toBeVisible();
     await expect(report).toContainText("日主为丙火");
     await expect(report).toContainText(closing);

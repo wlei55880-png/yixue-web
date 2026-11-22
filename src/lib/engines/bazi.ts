@@ -1,5 +1,7 @@
 import { Solar } from "lunar-javascript";
 
+import { matchShenSha } from "../../../data/rules/bazi/shensha";
+import { naYinOf } from "@/lib/domain/nayin";
 import {
   ELEMENT_CONTROLS as CONTROLS,
   ELEMENT_GENERATES as GENERATES,
@@ -10,10 +12,13 @@ import {
   BaziRequestSchema,
   ChartFactsSchema,
   GAN_VALUES,
+  ZHI_VALUES,
   type BaziRequest,
   type ChartFacts,
   type Element,
+  type Gan,
   type PillarKey,
+  type Zhi,
 } from "@/lib/schemas/chart-facts";
 
 const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
@@ -33,6 +38,25 @@ function ganAt(index: number): string {
   const gan = GAN_VALUES[index];
   if (!gan) throw new Error(`天干索引越界：${index}`);
   return gan;
+}
+
+function asGan(value: string): Gan {
+  if (!(GAN_VALUES as readonly string[]).includes(value)) throw new Error(`未知天干：${value}`);
+  return value as Gan;
+}
+
+function asZhi(value: string): Zhi {
+  if (!(ZHI_VALUES as readonly string[]).includes(value)) throw new Error(`未知地支：${value}`);
+  return value as Zhi;
+}
+
+/** 把 lunar-javascript 返回的「戌亥」拆成两个地支。 */
+function splitXunKong(value: string): [Zhi, Zhi] {
+  const chars = [...value];
+  const first = chars[0];
+  const second = chars[1];
+  if (chars.length !== 2 || !first || !second) throw new Error(`旬空格式异常：${value}`);
+  return [asZhi(first), asZhi(second)];
 }
 
 /** 以日主天干推导另一天干的十神，用于修正晚子时（sect=2）的时干。 */
@@ -71,12 +95,32 @@ export function getBaziChart(input: BaziRequest): ChartFacts {
   const eightChar = lunar.getEightChar();
   eightChar.setSect(sect);
 
-  const dayGan = eightChar.getDayGan();
+  const dayGan = asGan(eightChar.getDayGan());
+  const yearGan = asGan(eightChar.getYearGan());
+  const yearZhi = asZhi(eightChar.getYearZhi());
+  const dayZhi = asZhi(eightChar.getDayZhi());
   const isLateZiWithTodaySect = sect === 2 && hour === 23;
   const timeGan = isLateZiWithTodaySect
-    ? ganAt(((GAN_VALUES.indexOf(dayGan as (typeof GAN_VALUES)[number]) % 5) * 2) % 10)
+    ? ganAt(((GAN_VALUES.indexOf(dayGan) % 5) * 2) % 10)
     : eightChar.getTimeGan();
   const timeShiShenGan = isLateZiWithTodaySect ? tenGodOf(dayGan, timeGan) : eightChar.getTimeShiShenGan();
+
+  const dayXunKong = splitXunKong(eightChar.getDayXunKong());
+  const yearXunKong = splitXunKong(eightChar.getYearXunKong());
+
+  const shenSha = matchShenSha({
+    dayGan,
+    yearGan,
+    dayZhi,
+    yearZhi,
+    dayXunKong,
+    pillars: [
+      { key: "year", zhi: yearZhi },
+      { key: "month", zhi: asZhi(eightChar.getMonthZhi()) },
+      { key: "day", zhi: dayZhi },
+      { key: "hour", zhi: asZhi(eightChar.getTimeZhi()) },
+    ],
+  });
 
   const pillars = {
     year: {
@@ -89,6 +133,8 @@ export function getBaziChart(input: BaziRequest): ChartFacts {
       hideGan: eightChar.getYearHideGan(),
       shiShenZhi: eightChar.getYearShiShenZhi(),
       diShi: eightChar.getYearDiShi(),
+      naYin: naYinOf(eightChar.getYear()),
+      shenSha: shenSha.year,
     },
     month: {
       key: "month" as const,
@@ -100,6 +146,8 @@ export function getBaziChart(input: BaziRequest): ChartFacts {
       hideGan: eightChar.getMonthHideGan(),
       shiShenZhi: eightChar.getMonthShiShenZhi(),
       diShi: eightChar.getMonthDiShi(),
+      naYin: naYinOf(eightChar.getMonth()),
+      shenSha: shenSha.month,
     },
     day: {
       key: "day" as const,
@@ -111,6 +159,8 @@ export function getBaziChart(input: BaziRequest): ChartFacts {
       hideGan: eightChar.getDayHideGan(),
       shiShenZhi: eightChar.getDayShiShenZhi(),
       diShi: eightChar.getDayDiShi(),
+      naYin: naYinOf(eightChar.getDay()),
+      shenSha: shenSha.day,
     },
     hour: {
       key: "hour" as const,
@@ -122,6 +172,8 @@ export function getBaziChart(input: BaziRequest): ChartFacts {
       hideGan: eightChar.getTimeHideGan(),
       shiShenZhi: eightChar.getTimeShiShenZhi(),
       diShi: eightChar.getTimeDiShi(),
+      naYin: naYinOf(`${timeGan}${eightChar.getTimeZhi()}`),
+      shenSha: shenSha.hour,
     },
   };
 
@@ -170,6 +222,10 @@ export function getBaziChart(input: BaziRequest): ChartFacts {
     dayMaster: dayGan,
     pillars,
     wuXing: { visible, hidden, total },
+    kongWang: {
+      day: { branches: dayXunKong },
+      year: { branches: yearXunKong },
+    },
     luck: {
       forward: yun.isForward(),
       startAge: {

@@ -23,7 +23,10 @@ export const DaySectSchema = z.union([z.literal(1), z.literal(2)]);
 
 export type Gender = z.infer<typeof GenderSchema>;
 export type DaySect = z.infer<typeof DaySectSchema>;
+export const ElementSchema = z.enum(ELEMENT_VALUES);
 export type Element = (typeof ELEMENT_VALUES)[number];
+export type Gan = (typeof GAN_VALUES)[number];
+export type Zhi = (typeof ZHI_VALUES)[number];
 
 export const GanSchema = z.enum(GAN_VALUES);
 export const ZhiSchema = z.enum(ZHI_VALUES);
@@ -64,6 +67,21 @@ const PillarSchema = z
     hideGan: z.array(GanSchema).min(1, "藏干至少一位").max(3, "藏干最多三位"),
     shiShenZhi: z.array(ShiShenSchema).min(1, "藏干十神至少一位").max(3, "藏干十神最多三位"),
     diShi: DiShiSchema,
+    naYin: z
+      .object({
+        name: z.string().min(1),
+        element: ElementSchema,
+      })
+      .strict(),
+    shenSha: z.array(
+      z
+        .object({
+          name: z.string().min(1),
+          element: ElementSchema,
+          basedOn: z.string().min(1),
+        })
+        .strict(),
+    ),
   })
   .strict()
   .refine((pillar) => pillar.ganZhi === `${pillar.gan}${pillar.zhi}`, {
@@ -158,6 +176,12 @@ export const ChartFactsSchema = z
       })
       .strict(),
     wuXing: WuXingSchema,
+    kongWang: z
+      .object({
+        day: z.object({ branches: z.array(ZhiSchema).length(2) }).strict(),
+        year: z.object({ branches: z.array(ZhiSchema).length(2) }).strict(),
+      })
+      .strict(),
     luck: LuckSchema,
     conventions: z
       .object({

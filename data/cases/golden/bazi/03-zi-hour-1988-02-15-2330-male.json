@@ -52,7 +52,28 @@
           "偏财",
           "食神"
         ],
-        "diShi": "墓"
+        "diShi": "墓",
+        "naYin": {
+          "name": "大林木",
+          "element": "木"
+        },
+        "shenSha": [
+          {
+            "name": "太极贵人",
+            "element": "土",
+            "basedOn": "年干戊"
+          },
+          {
+            "name": "华盖",
+            "element": "土",
+            "basedOn": "年支辰"
+          },
+          {
+            "name": "空亡",
+            "element": "土",
+            "basedOn": "日柱旬空（辰巳）"
+          }
+        ]
       },
       "month": {
         "key": "month",
@@ -71,7 +92,33 @@
           "正官",
           "正印"
         ],
-        "diShi": "胎"
+        "diShi": "胎",
+        "naYin": {
+          "name": "大溪水",
+          "element": "水"
+        },
+        "shenSha": [
+          {
+            "name": "天乙贵人",
+            "element": "土",
+            "basedOn": "日干辛"
+          },
+          {
+            "name": "太极贵人",
+            "element": "土",
+            "basedOn": "日干辛"
+          },
+          {
+            "name": "驿马",
+            "element": "火",
+            "basedOn": "年支辰"
+          },
+          {
+            "name": "劫煞",
+            "element": "金",
+            "basedOn": "日支丑"
+          }
+        ]
       },
       "day": {
         "key": "day",
@@ -90,7 +137,38 @@
           "食神",
           "比肩"
         ],
-        "diShi": "养"
+        "diShi": "养",
+        "naYin": {
+          "name": "壁上土",
+          "element": "土"
+        },
+        "shenSha": [
+          {
+            "name": "天乙贵人",
+            "element": "土",
+            "basedOn": "年干戊"
+          },
+          {
+            "name": "太极贵人",
+            "element": "土",
+            "basedOn": "年干戊"
+          },
+          {
+            "name": "国印贵人",
+            "element": "金",
+            "basedOn": "年干戊"
+          },
+          {
+            "name": "华盖",
+            "element": "土",
+            "basedOn": "日支丑"
+          },
+          {
+            "name": "寡宿",
+            "element": "土",
+            "basedOn": "年支辰"
+          }
+        ]
       },
       "hour": {
         "key": "hour",
@@ -105,7 +183,23 @@
         "shiShenZhi": [
           "食神"
         ],
-        "diShi": "长生"
+        "diShi": "长生",
+        "naYin": {
+          "name": "霹雳火",
+          "element": "火"
+        },
+        "shenSha": [
+          {
+            "name": "文昌贵人",
+            "element": "木",
+            "basedOn": "日干辛"
+          },
+          {
+            "name": "将星",
+            "element": "金",
+            "basedOn": "年支辰"
+          }
+        ]
       }
     },
     "wuXing": {
@@ -129,6 +223,20 @@
         "土": 7,
         "金": 2,
         "水": 4
+      }
+    },
+    "kongWang": {
+      "day": {
+        "branches": [
+          "辰",
+          "巳"
+        ]
+      },
+      "year": {
+        "branches": [
+          "戌",
+          "亥"
+        ]
       }
     },
     "luck": {
