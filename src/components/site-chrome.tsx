@@ -30,11 +30,11 @@ export function SiteHeader({ current }: { current: "home" | "about" }) {
               <Link className="transition-colors hover:text-foreground" href="/">
                 快速排盘
               </Link>
-              <a className="transition-colors hover:text-foreground" href="#principles">
-                产品边界
+              <a className="transition-colors hover:text-foreground" href="#features">
+                功能介绍
               </a>
-              <a className="transition-colors hover:text-foreground" href="#roadmap">
-                里程碑
+              <a className="transition-colors hover:text-foreground" href="#how">
+                三步开始
               </a>
             </>
           )}

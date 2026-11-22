@@ -1,7 +1,16 @@
 import { ShieldAlert } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DISCLAIMER_POINTS, DISCLAIMER_TEXT } from "@/lib/project";
+
+const DISCLAIMER_TEXT =
+  "易学研习提供的是传统文化学习与娱乐参考，不构成任何现实决策依据。请把解读当作一面镜子，而不是标准答案。";
+
+const DISCLAIMER_POINTS = [
+  "不提供医疗、法律、投资、婚姻等专业建议。",
+  "不承诺改运、消灾或任何具体结果。",
+  "不作绝对化预测，不制造焦虑与恐惧。",
+  "如遇心理困扰，请寻求专业心理咨询或医疗帮助。",
+] as const;
 
 export function DisclaimerBanner() {
   return (
@@ -11,7 +20,7 @@ export function DisclaimerBanner() {
           <span className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/25 text-primary">
             <ShieldAlert className="h-4 w-4" aria-hidden />
           </span>
-          <CardTitle className="font-serif text-lg">学习用途与边界声明</CardTitle>
+          <CardTitle className="font-serif text-lg">温馨提示</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm leading-7 text-muted-foreground">{DISCLAIMER_TEXT}</p>

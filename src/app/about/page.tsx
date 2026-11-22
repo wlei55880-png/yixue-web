@@ -42,7 +42,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="border-t border-border/70 py-12">
+        <section id="features" className="scroll-mt-20 border-t border-border/70 py-12">
           <div className="grid gap-4 sm:grid-cols-3">
             {FEATURES.map((feature) => (
               <Card key={feature.title} className="h-full border-border/70 bg-card/60">
@@ -57,7 +57,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="border-t border-border/70 py-12">
+        <section id="how" className="scroll-mt-20 border-t border-border/70 py-12">
           <h2 className="font-serif text-2xl tracking-wide">三步开始</h2>
           <ol className="mt-6 grid gap-4 sm:grid-cols-3">
             {[
