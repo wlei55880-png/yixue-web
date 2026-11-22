@@ -64,3 +64,19 @@ export function zhiElement(zhi: string): Element {
   if (!element) throw new Error(`未知地支：${zhi}`);
   return element;
 }
+
+/** 阳干集合，用于十神阴阳判定。 */
+const YANG_GAN = new Set(["甲", "丙", "戊", "庚", "壬"]);
+
+/** 以日主天干推导目标天干的十神，供流年、流月等动态干支复用。 */
+export function shiShenOf(dayGan: string, targetGan: string): string {
+  const dayElement = ganElement(dayGan);
+  const targetElement = ganElement(targetGan);
+  const samePolarity = YANG_GAN.has(dayGan) === YANG_GAN.has(targetGan);
+
+  if (dayElement === targetElement) return samePolarity ? "比肩" : "劫财";
+  if (ELEMENT_GENERATES[dayElement] === targetElement) return samePolarity ? "食神" : "伤官";
+  if (ELEMENT_CONTROLS[dayElement] === targetElement) return samePolarity ? "偏财" : "正财";
+  if (ELEMENT_CONTROLS[targetElement] === dayElement) return samePolarity ? "七杀" : "正官";
+  return samePolarity ? "偏印" : "正印";
+}

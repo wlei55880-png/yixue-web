@@ -6,7 +6,8 @@ import { ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ganElement, zhiElement } from "@/lib/domain/wuxing";
+import { shenShaForBranch, type ShenShaBaseInfo, type ShenShaHit } from "@/lib/domain/shensha";
+import { ganElement, shiShenOf, zhiElement } from "@/lib/domain/wuxing";
 import {
   REPORT_CLOSING,
   REPORT_QUEUE_MESSAGE,
@@ -16,7 +17,7 @@ import {
   type PublicBaziReport,
   type PublicRuleHit,
 } from "@/lib/llm/report-types";
-import type { ChartFacts, Element, Gender, PillarKey } from "@/lib/schemas/chart-facts";
+import type { ChartFacts, Element, Gan, Gender, PillarKey, Zhi } from "@/lib/schemas/chart-facts";
 
 const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
 
@@ -50,13 +51,88 @@ const ELEMENT_TEXT: Record<Element, string> = {
 const GAN_CHARS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] as const;
 const ZHI_CHARS = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"] as const;
 
-/** 公历年转流年干支，用于流年横轴展示。 */
-function yearGanZhi(year: number): string {
-  const offset = year - 4;
-  const gan = GAN_CHARS[((offset % 10) + 10) % 10] ?? "";
-  const zhi = ZHI_CHARS[((offset % 12) + 12) % 12] ?? "";
-  return `${gan}${zhi}`;
+interface GanZhi {
+  gan: Gan;
+  zhi: Zhi;
+  text: string;
 }
+
+/** 公历年转干支，用于流年与流月推演。 */
+function yearGanZhi(year: number): GanZhi {
+  const offset = year - 4;
+  const gan = GAN_CHARS[((offset % 10) + 10) % 10] ?? "甲";
+  const zhi = ZHI_CHARS[((offset % 12) + 12) % 12] ?? "子";
+  return { gan, zhi, text: `${gan}${zhi}` };
+}
+
+const MONTH_LABELS = [
+  "正月",
+  "二月",
+  "三月",
+  "四月",
+  "五月",
+  "六月",
+  "七月",
+  "八月",
+  "九月",
+  "十月",
+  "冬月",
+  "腊月",
+] as const;
+const MONTH_ZHI: readonly Zhi[] = ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑"];
+
+/** 五虎遁：年干决定正月天干，甲己丙、乙庚戊、丙辛庚、丁壬壬、戊癸甲。 */
+const FIRST_MONTH_GAN: Record<Gan, number> = {
+  甲: 2,
+  己: 2,
+  乙: 4,
+  庚: 4,
+  丙: 6,
+  辛: 6,
+  丁: 8,
+  壬: 8,
+  戊: 0,
+  癸: 0,
+};
+
+interface LiuYueItem {
+  label: string;
+  gan: Gan;
+  zhi: Zhi;
+  ganZhi: string;
+}
+
+/** 由流年天干推十二个流月（正月建寅）。 */
+function liuYueOf(yearGan: Gan): LiuYueItem[] {
+  const first = FIRST_MONTH_GAN[yearGan];
+  return MONTH_ZHI.map((zhi, index) => {
+    const gan = GAN_CHARS[(first + index) % 10] ?? "甲";
+    return { label: MONTH_LABELS[index] ?? "", gan, zhi, ganZhi: `${gan}${zhi}` };
+  });
+}
+
+/** 当前月令索引：0 = 寅月（立春起），与流月数组对齐。 */
+function currentMonthIndex(): number {
+  return (new Date().getMonth() + 1 + 10) % 12;
+}
+
+/** 从命盘提取神煞匹配基准，供流年、流月复用。 */
+function shenShaBaseOf(chart: ChartFacts): ShenShaBaseInfo {
+  return {
+    dayGan: chart.dayMaster,
+    yearGan: chart.pillars.year.gan,
+    dayZhi: chart.pillars.day.zhi,
+    yearZhi: chart.pillars.year.zhi,
+    dayXunKong: chart.kongWang.day.branches,
+  };
+}
+
+/** 流年、流月卡片上的神煞悬浮说明。 */
+function shenShaTitle(hits: ShenShaHit[]): string {
+  if (hits.length === 0) return "神煞：无";
+  return `神煞：${hits.map((hit) => `${hit.name}（${hit.basedOn}）`).join("、")}`;
+}
+
 
 /** 十神名词解释，鼠标悬停时通过 title 展示。 */
 const SHI_SHEN_TIPS: Record<string, string> = {
@@ -302,8 +378,7 @@ export function BaziForm() {
               公历 {chart.solar.text} · 农历 {chart.lunar.text} · {chart.genderLabel} · 日主{" "}
               <span className={ELEMENT_TEXT[ganElement(chart.dayMaster)]}>{chart.dayMaster}</span>
             </p>
-            <PillarTable chart={chart} />
-            <DaYunStrip key={`${chart.solar.text}-${chart.input.gender}`} chart={chart} />
+            <ChartInteractive key={`${chart.solar.text}-${chart.input.gender}`} chart={chart} />
             <details className="group rounded-lg border border-border/70 bg-background/60">
               <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-4 [&::-webkit-details-marker]:hidden">
                 <h3 className="font-serif text-lg">排盘规则溯源</h3>
@@ -608,15 +683,53 @@ function PillarTable({ chart }: { chart: ChartFacts }) {
   );
 }
 
-/** 横向 8 步大运，可点击切换下方十年流年。 */
-function DaYunStrip({ chart }: { chart: ChartFacts }) {
+/** 排盘交互容器：统一管理大运、流年选择，驱动流月与关系图联动。 */
+function ChartInteractive({ chart }: { chart: ChartFacts }) {
   const currentYear = new Date().getFullYear();
   const daYun = chart.luck.daYun.slice(0, 8);
-  const [selectedIndex, setSelectedIndex] = React.useState(() => {
-    const index = daYun.findIndex((item) => currentYear >= item.startYear && currentYear <= item.endYear);
-    return index >= 0 ? index : 0;
+  const initialIndex = daYun.findIndex((item) => currentYear >= item.startYear && currentYear <= item.endYear);
+  const [selectedIndex, setSelectedIndex] = React.useState(initialIndex >= 0 ? initialIndex : 0);
+  const [selectedYear, setSelectedYear] = React.useState(() => {
+    const initial = daYun[initialIndex >= 0 ? initialIndex : 0];
+    if (initial && currentYear >= initial.startYear && currentYear <= initial.endYear) return currentYear;
+    return initial?.startYear ?? currentYear;
   });
 
+  function selectDaYun(index: number) {
+    setSelectedIndex(index);
+    const target = daYun[index];
+    if (!target) return;
+    setSelectedYear(currentYear >= target.startYear && currentYear <= target.endYear ? currentYear : target.startYear);
+  }
+
+  return (
+    <div className="space-y-4">
+      <PillarTable chart={chart} />
+      <DaYunStrip
+        chart={chart}
+        daYun={daYun}
+        selectedIndex={selectedIndex}
+        onSelectIndex={selectDaYun}
+        selectedYear={selectedYear}
+        onSelectYear={setSelectedYear}
+      />
+      <RelationDiagram chart={chart} flowYear={selectedYear} />
+    </div>
+  );
+}
+
+interface DaYunStripProps {
+  chart: ChartFacts;
+  daYun: ChartFacts["luck"]["daYun"];
+  selectedIndex: number;
+  onSelectIndex: (index: number) => void;
+  selectedYear: number;
+  onSelectYear: (year: number) => void;
+}
+
+/** 横向 8 步大运；点击大运切换流年，点击流年展开十二流月。 */
+function DaYunStrip({ chart, daYun, selectedIndex, onSelectIndex, selectedYear, onSelectYear }: DaYunStripProps) {
+  const currentYear = new Date().getFullYear();
   const selected = daYun[selectedIndex] ?? daYun[0];
   if (!selected) return null;
 
@@ -624,6 +737,10 @@ function DaYunStrip({ chart }: { chart: ChartFacts }) {
     { length: selected.endYear - selected.startYear + 1 },
     (_, index) => selected.startYear + index,
   );
+  const flow = yearGanZhi(selectedYear);
+  const months = liuYueOf(flow.gan);
+  const activeMonth = currentMonthIndex();
+  const shenShaBase = shenShaBaseOf(chart);
 
   return (
     <div className="rounded-xl border border-amber-500/25 bg-[#131009] p-3 sm:p-4">
@@ -642,7 +759,7 @@ function DaYunStrip({ chart }: { chart: ChartFacts }) {
             <button
               key={item.index}
               type="button"
-              onClick={() => setSelectedIndex(index)}
+              onClick={() => onSelectIndex(index)}
               aria-pressed={isSelected}
               title={`查看 ${item.ganZhi} 大运的流年`}
               className={`min-w-[5.6rem] flex-1 cursor-pointer rounded-lg border px-2 py-2.5 text-center transition-colors ${
@@ -682,23 +799,396 @@ function DaYunStrip({ chart }: { chart: ChartFacts }) {
         </div>
         <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
           {years.map((year) => {
-            const ganZhi = yearGanZhi(year);
+            const gz = yearGanZhi(year);
+            const shiShen = shiShenOf(chart.dayMaster, gz.gan);
+            const hits = shenShaForBranch(shenShaBase, gz.zhi);
             const isCurrent = year === currentYear;
+            const isSelected = year === selectedYear;
             return (
-              <div
+              <button
                 key={year}
-                className={`min-w-[3.25rem] flex-1 rounded-md border px-1 py-1.5 text-center ${
-                  isCurrent ? "border-amber-400/70 bg-amber-500/15" : "border-amber-500/10 bg-white/[0.02]"
+                type="button"
+                onClick={() => onSelectYear(year)}
+                aria-pressed={isSelected}
+                title={`${year} ${gz.text} · 十神：${shiShen}\n${SHI_SHEN_TIPS[shiShen] ?? ""}\n${shenShaTitle(hits)}`}
+                className={`min-w-[3.4rem] flex-1 cursor-pointer rounded-md border px-1 py-1.5 text-center transition-colors ${
+                  isSelected
+                    ? "border-amber-400/70 bg-amber-500/15 ring-1 ring-amber-400/25"
+                    : "border-amber-500/10 bg-white/[0.02] hover:border-amber-400/40 hover:bg-amber-500/[0.06]"
                 }`}
               >
-                <p className={`text-[10px] ${isCurrent ? "text-amber-300" : "text-zinc-500"}`}>{year}</p>
-                <p className={`font-serif text-sm tracking-widest ${isCurrent ? "text-amber-200" : "text-zinc-300"}`}>
-                  {ganZhi}
+                <p className={`text-[10px] ${isSelected ? "text-amber-300" : isCurrent ? "text-amber-400/80" : "text-zinc-500"}`}>
+                  {year}
+                  {isCurrent ? <span className="ml-0.5 text-amber-400">今</span> : null}
+                </p>
+                <p
+                  className={`font-serif text-sm tracking-widest ${
+                    isSelected ? "text-amber-200" : isCurrent ? "text-amber-200/90" : "text-zinc-300"
+                  }`}
+                >
+                  {gz.text}
+                </p>
+                <p className="mt-0.5 whitespace-nowrap text-[9px] leading-3 text-zinc-500">{shiShen}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="mt-2 rounded-lg border border-amber-500/15 bg-black/25 p-2.5">
+        <div className="flex flex-wrap items-baseline justify-between gap-1 px-1">
+          <p className="text-[10px] tracking-[0.2em] text-amber-500/60">
+            流月 · {selectedYear} {flow.text}
+          </p>
+          <p className="text-[10px] text-zinc-500">点击上方流年切换 · 高亮为当前月令</p>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-6">
+          {months.map((month, index) => {
+            const shiShen = shiShenOf(chart.dayMaster, month.gan);
+            const hits = shenShaForBranch(shenShaBase, month.zhi);
+            const isActive = selectedYear === currentYear && index === activeMonth;
+            return (
+              <div
+                key={`${selectedYear}-${month.label}`}
+                title={`${selectedYear} 年${month.label} ${month.ganZhi} · 十神：${shiShen}\n${
+                  SHI_SHEN_TIPS[shiShen] ?? ""
+                }\n${shenShaTitle(hits)}`}
+                className={`cursor-help rounded-md border px-1 py-1.5 text-center transition-colors ${
+                  isActive
+                    ? "border-amber-400/70 bg-amber-500/15 ring-1 ring-amber-400/25"
+                    : "border-amber-500/10 bg-white/[0.02] hover:border-amber-400/30 hover:bg-amber-500/[0.05]"
+                }`}
+              >
+                <p className={`text-[10px] ${isActive ? "text-amber-300" : "text-zinc-500"}`}>{month.label}</p>
+                <p
+                  className={`font-serif text-sm tracking-widest ${isActive ? "text-amber-200" : "text-zinc-200"}`}
+                >
+                  {month.ganZhi}
+                </p>
+                <p className="mt-0.5 whitespace-nowrap text-[9px] leading-3 text-zinc-500">{shiShen}</p>
+                <p className="mt-0.5 text-[9px] leading-3">
+                  {isActive ? <span className="text-amber-300">当前月令</span> : <span className="text-transparent">·</span>}
                 </p>
               </div>
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+type RelationType = "冲" | "合" | "害" | "刑";
+
+const RELATION_COLORS: Record<RelationType, string> = {
+  冲: "#f87171",
+  合: "#34d399",
+  害: "#fbbf24",
+  刑: "#c084fc",
+};
+
+/** SVG 节点文字配色，与表格的五行色保持一致。 */
+const ELEMENT_FILL: Record<Element, string> = {
+  木: "#86efac",
+  火: "#fda4af",
+  土: "#fcd34d",
+  金: "#e4e4e7",
+  水: "#7dd3fc",
+};
+
+const GAN_HE_PAIRS: ReadonlyArray<readonly [Gan, Gan]> = [
+  ["甲", "己"],
+  ["乙", "庚"],
+  ["丙", "辛"],
+  ["丁", "壬"],
+  ["戊", "癸"],
+];
+const GAN_CHONG_PAIRS: ReadonlyArray<readonly [Gan, Gan]> = [
+  ["甲", "庚"],
+  ["乙", "辛"],
+  ["丙", "壬"],
+  ["丁", "癸"],
+];
+const ZHI_HE_PAIRS: ReadonlyArray<readonly [Zhi, Zhi]> = [
+  ["子", "丑"],
+  ["寅", "亥"],
+  ["卯", "戌"],
+  ["辰", "酉"],
+  ["巳", "申"],
+  ["午", "未"],
+];
+const ZHI_CHONG_PAIRS: ReadonlyArray<readonly [Zhi, Zhi]> = [
+  ["子", "午"],
+  ["丑", "未"],
+  ["寅", "申"],
+  ["卯", "酉"],
+  ["辰", "戌"],
+  ["巳", "亥"],
+];
+const ZHI_HAI_PAIRS: ReadonlyArray<readonly [Zhi, Zhi]> = [
+  ["子", "未"],
+  ["丑", "午"],
+  ["寅", "巳"],
+  ["卯", "辰"],
+  ["申", "亥"],
+  ["酉", "戌"],
+];
+/** 相刑：子卯、寅巳申、丑戌未三组，以及辰午酉亥自刑。 */
+const ZHI_XING_PAIRS = new Set([
+  "子卯",
+  "寅巳",
+  "巳申",
+  "寅申",
+  "丑戌",
+  "戌未",
+  "丑未",
+  "辰辰",
+  "午午",
+  "酉酉",
+  "亥亥",
+]);
+
+function pairMatches<T extends string>(pairs: ReadonlyArray<readonly [T, T]>, a: T, b: T): boolean {
+  return pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
+
+function isZhiXing(a: Zhi, b: Zhi): boolean {
+  return ZHI_XING_PAIRS.has(`${a}${b}`) || ZHI_XING_PAIRS.has(`${b}${a}`);
+}
+
+interface RelationNode {
+  id: string;
+  char: string;
+  label: string;
+  x: number;
+  y: number;
+  element: Element;
+  flow: boolean;
+}
+
+interface RelationLine {
+  key: string;
+  a: RelationNode;
+  b: RelationNode;
+  type: RelationType;
+  flow: boolean;
+}
+
+function pushRelation(
+  lines: RelationLine[],
+  a: RelationNode,
+  b: RelationNode,
+  type: RelationType,
+  flow: boolean,
+) {
+  lines.push({ key: `${a.id}-${b.id}-${type}`, a, b, type, flow });
+}
+
+function collectGanRelations(lines: RelationLine[], a: RelationNode, b: RelationNode, flow = false) {
+  const ganA = a.char as Gan;
+  const ganB = b.char as Gan;
+  const isFlow = flow || a.flow || b.flow;
+  if (pairMatches(GAN_HE_PAIRS, ganA, ganB)) pushRelation(lines, a, b, "合", isFlow);
+  if (pairMatches(GAN_CHONG_PAIRS, ganA, ganB)) pushRelation(lines, a, b, "冲", isFlow);
+}
+
+function collectZhiRelations(lines: RelationLine[], a: RelationNode, b: RelationNode, flow = false) {
+  const zhiA = a.char as Zhi;
+  const zhiB = b.char as Zhi;
+  const isFlow = flow || a.flow || b.flow;
+  if (pairMatches(ZHI_HE_PAIRS, zhiA, zhiB)) pushRelation(lines, a, b, "合", isFlow);
+  if (pairMatches(ZHI_CHONG_PAIRS, zhiA, zhiB)) pushRelation(lines, a, b, "冲", isFlow);
+  if (pairMatches(ZHI_HAI_PAIRS, zhiA, zhiB)) pushRelation(lines, a, b, "害", isFlow);
+  if (isZhiXing(zhiA, zhiB)) pushRelation(lines, a, b, "刑", isFlow);
+}
+
+/** 干支关系图示：原生 SVG 绘制刑冲合害连线，流年互动使用虚线。 */
+function RelationDiagram({ chart, flowYear }: { chart: ChartFacts; flowYear: number }) {
+  const flow = yearGanZhi(flowYear);
+  const NATAL_X = [100, 300, 500, 700] as const;
+  const GAN_Y = 96;
+  const ZHI_Y = 332;
+  const FLOW_X = 880;
+
+  const ganNodes: RelationNode[] = PILLAR_ORDER.map((key, index) => {
+    const pillar = chart.pillars[key];
+    return {
+      id: `${key}-gan`,
+      char: pillar.gan,
+      label: key === "day" ? "日主" : `${pillar.label.slice(0, 1)}干`,
+      x: NATAL_X[index] ?? 100,
+      y: GAN_Y,
+      element: ganElement(pillar.gan),
+      flow: false,
+    };
+  });
+  const zhiNodes: RelationNode[] = PILLAR_ORDER.map((key, index) => {
+    const pillar = chart.pillars[key];
+    return {
+      id: `${key}-zhi`,
+      char: pillar.zhi,
+      label: `${pillar.label.slice(0, 1)}支`,
+      x: NATAL_X[index] ?? 100,
+      y: ZHI_Y,
+      element: zhiElement(pillar.zhi),
+      flow: false,
+    };
+  });
+  const flowGanNode: RelationNode = {
+    id: "flow-gan",
+    char: flow.gan,
+    label: "流年干",
+    x: FLOW_X,
+    y: GAN_Y,
+    element: ganElement(flow.gan),
+    flow: true,
+  };
+  const flowZhiNode: RelationNode = {
+    id: "flow-zhi",
+    char: flow.zhi,
+    label: "流年支",
+    x: FLOW_X,
+    y: ZHI_Y,
+    element: zhiElement(flow.zhi),
+    flow: true,
+  };
+
+  const lines: RelationLine[] = [];
+  for (let i = 0; i < PILLAR_ORDER.length; i += 1) {
+    for (let j = i + 1; j < PILLAR_ORDER.length; j += 1) {
+      const ganA = ganNodes[i];
+      const ganB = ganNodes[j];
+      if (ganA && ganB) collectGanRelations(lines, ganA, ganB);
+      const zhiA = zhiNodes[i];
+      const zhiB = zhiNodes[j];
+      if (zhiA && zhiB) collectZhiRelations(lines, zhiA, zhiB);
+    }
+    const ganA = ganNodes[i];
+    if (ganA) collectGanRelations(lines, ganA, flowGanNode, true);
+    const zhiA = zhiNodes[i];
+    if (zhiA) collectZhiRelations(lines, zhiA, flowZhiNode, true);
+  }
+
+  const allNodes = [...ganNodes, ...zhiNodes, flowGanNode, flowZhiNode];
+
+  return (
+    <div className="rounded-xl border border-amber-500/25 bg-[#131009] p-3 sm:p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
+        <h3 className="font-serif text-base text-amber-100/90">干支关系图示</h3>
+        <p className="text-[11px] text-amber-500/60">
+          四柱刑冲合害 · 流年 {flowYear} {flow.text}
+        </p>
+      </div>
+      <div className="mt-2 overflow-x-auto pb-1">
+        <svg
+          viewBox="0 0 960 420"
+          role="img"
+          aria-label={`四柱干支刑冲合害关系图，共 ${lines.length} 组关联`}
+          className="h-auto w-full min-w-[620px]"
+        >
+          <text x="22" y={GAN_Y + 4} fontSize="13" fill="#b45309" letterSpacing="2">
+            天干
+          </text>
+          <text x="22" y={ZHI_Y + 4} fontSize="13" fill="#b45309" letterSpacing="2">
+            地支
+          </text>
+          <text x={FLOW_X} y="30" textAnchor="middle" fontSize="12" fill="#fbbf24">
+            流年 {flowYear}
+          </text>
+
+          {lines.length === 0 ? (
+            <text x="480" y="214" textAnchor="middle" fontSize="13" fill="#71717a">
+              四柱之间未见显著刑冲合害
+            </text>
+          ) : null}
+
+          {lines.map((line, index) => {
+            const above = line.a.y < 200;
+            const magnitude = Math.min(54 + index * 12, 78);
+            const cx = (line.a.x + line.b.x) / 2;
+            const cy = line.a.y + (above ? -magnitude : magnitude);
+            const mx = (line.a.x + 2 * cx + line.b.x) / 4;
+            const my = (line.a.y + 2 * cy + line.b.y) / 4;
+            const color = RELATION_COLORS[line.type];
+            return (
+              <g key={line.key}>
+                <title>{`${line.a.char}${line.b.char}${line.type}${line.flow ? "（流年互动）" : ""}`}</title>
+                <path
+                  d={`M ${line.a.x} ${line.a.y} Q ${cx} ${cy} ${line.b.x} ${line.b.y}`}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={line.flow ? 1.6 : 2}
+                  strokeDasharray={line.flow ? "7 5" : undefined}
+                  opacity="0.9"
+                />
+                <text
+                  x={mx}
+                  y={my + 4}
+                  textAnchor="middle"
+                  fontSize="14"
+                  fontWeight="600"
+                  fill={color}
+                  stroke="#131009"
+                  strokeWidth="5"
+                  style={{ paintOrder: "stroke" }}
+                >
+                  {line.type}
+                </text>
+              </g>
+            );
+          })}
+
+          {allNodes.map((node) => (
+            <g key={node.id}>
+              <rect
+                x={node.x - 32}
+                y={node.y - 32}
+                width="64"
+                height="64"
+                rx="12"
+                fill="#1b1710"
+                stroke={node.flow ? "#f59e0b" : "#78531f"}
+                strokeWidth={node.flow ? 1.6 : 1.2}
+                strokeDasharray={node.flow ? "6 4" : undefined}
+              />
+              <text
+                x={node.x}
+                y={node.y + 12}
+                textAnchor="middle"
+                fontSize="30"
+                fill={ELEMENT_FILL[node.element]}
+                fontFamily="ui-serif, Georgia, 'Songti SC', serif"
+              >
+                {node.char}
+              </text>
+              <text
+                x={node.x}
+                y={node.y + 52}
+                textAnchor="middle"
+                fontSize="11"
+                fill={node.flow ? "#fbbf24" : "#a1a1aa"}
+              >
+                {node.label}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11px] text-zinc-400">
+        {(["冲", "合", "害", "刑"] as const).map((type) => (
+          <span key={type} className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="inline-block h-0.5 w-6 rounded-full"
+              style={{ backgroundColor: RELATION_COLORS[type] }}
+            />
+            {type}
+          </span>
+        ))}
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="inline-block w-6 border-t border-dashed border-amber-300" />
+          流年互动
+        </span>
+        <span className="text-zinc-500">共 {lines.length} 组</span>
       </div>
     </div>
   );
