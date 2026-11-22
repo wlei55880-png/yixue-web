@@ -19,6 +19,24 @@ import type { ChartFacts, Element, Gender, PillarKey } from "@/lib/schemas/chart
 
 const PILLAR_ORDER: readonly PillarKey[] = ["year", "month", "day", "hour"];
 
+const YEARS = Array.from({ length: 201 }, (_, index) => 1900 + index);
+const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
+const MINUTES = Array.from({ length: 60 }, (_, index) => index);
+const SHI_CHEN = [
+  { value: 0, label: "子时 · 00:00" },
+  { value: 2, label: "丑时 · 02:00" },
+  { value: 4, label: "寅时 · 04:00" },
+  { value: 6, label: "卯时 · 06:00" },
+  { value: 8, label: "辰时 · 08:00" },
+  { value: 10, label: "巳时 · 10:00" },
+  { value: 12, label: "午时 · 12:00" },
+  { value: 14, label: "未时 · 14:00" },
+  { value: 16, label: "申时 · 16:00" },
+  { value: 18, label: "酉时 · 18:00" },
+  { value: 20, label: "戌时 · 20:00" },
+  { value: 22, label: "亥时 · 22:00" },
+] as const;
+
 /** 深色黑金表盘的五行配色。 */
 const ELEMENT_TEXT: Record<Element, string> = {
   木: "text-emerald-300",
@@ -46,7 +64,7 @@ const CONFIDENCE_LABELS: Record<Confidence, string> = {
 };
 
 const inputClassName =
-  "h-9 w-full rounded-md border border-input bg-background/70 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30";
+  "h-10 w-full cursor-pointer rounded-lg border border-input bg-background/80 px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30";
 
 export function BaziForm() {
   const [result, setResult] = React.useState<ChartResult | null>(null);
@@ -57,6 +75,12 @@ export function BaziForm() {
   const [reportPending, setReportPending] = React.useState(false);
   const chartRequestId = React.useRef(0);
   const reportRequestId = React.useRef(0);
+  const [year, setYear] = React.useState(1990);
+  const [month, setMonth] = React.useState(1);
+  const [day, setDay] = React.useState(1);
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const safeDay = Math.min(day, daysInMonth);
 
   const chart = result?.chart ?? null;
   const ruleHits = result?.hits ?? [];
@@ -147,30 +171,86 @@ export function BaziForm() {
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          <Field label="年">
-            <input className={inputClassName} name="year" type="number" min={1900} max={2100} defaultValue={1990} required />
-          </Field>
-          <Field label="月">
-            <input className={inputClassName} name="month" type="number" min={1} max={12} defaultValue={1} required />
-          </Field>
-          <Field label="日">
-            <input className={inputClassName} name="day" type="number" min={1} max={31} defaultValue={1} required />
-          </Field>
-          <Field label="时">
-            <input className={inputClassName} name="hour" type="number" min={0} max={23} defaultValue={12} required />
-          </Field>
-          <Field label="分">
-            <input className={inputClassName} name="minute" type="number" min={0} max={59} defaultValue={0} required />
-          </Field>
-          <Field label="性别">
-            <select className={inputClassName} name="gender" defaultValue="male">
-              <option value="male">男</option>
-              <option value="female">女</option>
-            </select>
-          </Field>
-          <div className="sm:col-span-2 lg:col-span-6">
-            <Button type="submit" disabled={chartPending}>
+        <form onSubmit={handleSubmit} className="rounded-xl border border-border/60 bg-background/40 p-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Field label="年">
+              <select
+                className={inputClassName}
+                name="year"
+                value={year}
+                onChange={(event) => {
+                  const nextYear = Number(event.target.value);
+                  setYear(nextYear);
+                  setDay((current) => Math.min(current, new Date(nextYear, month, 0).getDate()));
+                }}
+              >
+                {YEARS.map((item) => (
+                  <option key={item} value={item}>
+                    {item} 年
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="月">
+              <select
+                className={inputClassName}
+                name="month"
+                value={month}
+                onChange={(event) => {
+                  const nextMonth = Number(event.target.value);
+                  setMonth(nextMonth);
+                  setDay((current) => Math.min(current, new Date(year, nextMonth, 0).getDate()));
+                }}
+              >
+                {MONTHS.map((item) => (
+                  <option key={item} value={item}>
+                    {item} 月
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="日">
+              <select
+                className={inputClassName}
+                name="day"
+                value={safeDay}
+                onChange={(event) => setDay(Number(event.target.value))}
+              >
+                {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((item) => (
+                  <option key={item} value={item}>
+                    {item} 日
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="时辰">
+              <select className={inputClassName} name="hour" defaultValue={12}>
+                {SHI_CHEN.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="分">
+              <select className={inputClassName} name="minute" defaultValue={0}>
+                {MINUTES.map((item) => (
+                  <option key={item} value={item}>
+                    {item} 分
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="性别">
+              <select className={inputClassName} name="gender" defaultValue="male">
+                <option value="male">男</option>
+                <option value="female">女</option>
+              </select>
+            </Field>
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/50 pt-3">
+            <p className="text-xs text-muted-foreground">公历 · 北京时间</p>
+            <Button type="submit" disabled={chartPending} className="min-w-28">
               {chartPending ? "排盘中…" : "排盘"}
             </Button>
           </div>
@@ -189,13 +269,17 @@ export function BaziForm() {
               <span className={ELEMENT_TEXT[ganElement(chart.dayMaster)]}>{chart.dayMaster}</span>
             </p>
             <PillarTable chart={chart} />
-            <div className="rounded-lg border border-border/70 bg-background/60 p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="font-serif text-lg">命理分析（规则命中）</h3>
+            <DaYunStrip chart={chart} />
+            <details className="group rounded-lg border border-border/70 bg-background/60">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-4 [&::-webkit-details-marker]:hidden">
+                <h3 className="font-serif text-lg">排盘规则溯源</h3>
                 <span className="text-xs text-muted-foreground">
-                  {ruleHits.length === 0 ? "未命中" : `${ruleHits.length} 条规则命中`}
+                  {ruleHits.length === 0 ? "未命中" : `${ruleHits.length} 条规则命中`} ·{" "}
+                  <span className="group-open:hidden">展开</span>
+                  <span className="hidden group-open:inline">收起</span>
                 </span>
-              </div>
+              </summary>
+              <div className="border-t border-border/60 p-4">
               {ruleHits.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">当前排盘未命中知识库规则</p>
               ) : (
@@ -232,15 +316,11 @@ export function BaziForm() {
                   })}
                 </div>
               )}
-            </div>
+              </div>
+            </details>
             <div id="ai-report" className="rounded-lg border border-primary/25 bg-primary/[0.03] p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <h3 className="font-serif text-lg">AI 智能解读报告</h3>
-                  <p className="text-xs leading-6 text-muted-foreground">
-                    融合子平格局、盲派象法与荣格心理学，按三篇结构展开：原局剖析、岁运推演、宗师寄语。
-                  </p>
-                </div>
+                <h3 className="font-serif text-lg">AI 智能解读</h3>
                 {report ? (
                   <Button type="button" variant="outline" size="sm" onClick={handleGenerateReport} disabled={reportPending}>
                     {reportPending ? "推演中…" : "重新生成"}
@@ -252,13 +332,10 @@ export function BaziForm() {
                   <ReportMarkdown markdown={report.markdown} />
                 </div>
               ) : (
-                <div className="mt-4 space-y-3">
+                <div className="mt-4">
                   <Button type="button" onClick={handleGenerateReport} disabled={reportPending}>
                     {reportPending ? "正在推演…" : "生成报告"}
                   </Button>
-                  <p className="text-xs leading-6 text-muted-foreground">
-                    报告会结合上方命理分析，冲突处并列保留，不给出绝对化结论。
-                  </p>
                 </div>
               )}
             </div>
@@ -436,12 +513,12 @@ function PillarTable({ chart }: { chart: ChartFacts }) {
                   {pillar.shenSha.length === 0 ? (
                     <span className="text-[10px] text-zinc-600">—</span>
                   ) : (
-                    <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
+                    <div className="flex flex-wrap items-center justify-center gap-1">
                       {pillar.shenSha.map((item) => (
                         <span
                           key={item.name}
                           title={`${item.name} · ${item.basedOn}`}
-                          className={`text-[9px] leading-3 sm:text-[10px] ${ELEMENT_TEXT[item.element]}`}
+                          className={`whitespace-nowrap rounded border border-amber-500/15 bg-white/[0.03] px-1 py-0.5 text-[10px] leading-3 sm:text-[11px] ${ELEMENT_TEXT[item.element]}`}
                         >
                           {item.name}
                         </span>
@@ -477,6 +554,48 @@ function PillarTable({ chart }: { chart: ChartFacts }) {
             年柱旬空 <span className="text-amber-300">{chart.kongWang.year.branches.join("")}</span>
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** 横向 8 步大运，当前所处大运高亮。 */
+function DaYunStrip({ chart }: { chart: ChartFacts }) {
+  const currentYear = new Date().getFullYear();
+  const daYun = chart.luck.daYun.slice(0, 8);
+
+  return (
+    <div className="rounded-xl border border-amber-500/25 bg-[#131009] p-3 sm:p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
+        <h3 className="font-serif text-base text-amber-100/90">大运排布 · 八步</h3>
+        <p className="text-[11px] text-amber-500/60">
+          起运 {chart.luck.startSolar.slice(0, 10)} · {chart.luck.forward ? "顺排" : "逆排"}
+        </p>
+      </div>
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {daYun.map((item) => {
+          const active = currentYear >= item.startYear && currentYear <= item.endYear;
+          const currentAge = item.startAge + (currentYear - item.startYear);
+          return (
+            <div
+              key={item.index}
+              className={`min-w-[5.6rem] flex-1 rounded-lg border px-2 py-2.5 text-center ${
+                active ? "border-amber-400/60 bg-amber-500/10" : "border-amber-500/15 bg-black/25"
+              }`}
+            >
+              <p className={`font-serif text-lg tracking-widest ${active ? "text-amber-200" : "text-zinc-200"}`}>
+                {item.ganZhi}
+              </p>
+              <p className="mt-1 whitespace-nowrap text-[10px] text-zinc-500">
+                {item.startYear}–{item.endYear}
+              </p>
+              <p className="mt-0.5 whitespace-nowrap text-[10px] text-zinc-400">
+                {item.startAge}–{item.endAge} 岁
+              </p>
+              {active ? <p className="mt-1 whitespace-nowrap text-[10px] text-amber-300">当前 {currentAge} 岁</p> : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

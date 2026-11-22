@@ -74,11 +74,11 @@ test.describe("规则命中面板", () => {
   test("无命中时展示空状态", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByLabel("年").fill("1962");
-    await page.getByLabel("月").fill("2");
-    await page.getByLabel("日").fill("9");
-    await page.getByLabel("时").fill("18");
-    await page.getByLabel("分").fill("30");
+    await page.getByLabel("年").selectOption("1962");
+    await page.getByLabel("月").selectOption("2");
+    await page.getByLabel("日").selectOption("9");
+    await page.getByLabel("时辰").selectOption("18");
+    await page.getByLabel("分").selectOption("30");
     await page.getByRole("button", { name: "排盘" }).click();
 
     await expect(page.getByText("当前排盘未命中知识库规则")).toBeVisible();
@@ -87,11 +87,11 @@ test.describe("规则命中面板", () => {
   test("官杀同透时并列展示冲突组", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByLabel("年").fill("1970");
-    await page.getByLabel("月").fill("1");
-    await page.getByLabel("日").fill("1");
-    await page.getByLabel("时").fill("18");
-    await page.getByLabel("分").fill("30");
+    await page.getByLabel("年").selectOption("1970");
+    await page.getByLabel("月").selectOption("1");
+    await page.getByLabel("日").selectOption("1");
+    await page.getByLabel("时辰").selectOption("18");
+    await page.getByLabel("分").selectOption("30");
     await page.getByRole("button", { name: "排盘" }).click();
 
     await expect(page.getByText("冲突组：官杀同透")).toBeVisible();
